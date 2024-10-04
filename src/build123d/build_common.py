@@ -238,16 +238,18 @@ class Builder(ABC):
         # by CPython in Linux, Window & MacOS but may not be supported in other python
         # implementations.  Support outside of these OS's is outside the scope of this
         # project.
-        same_scope = (
-            Builder._get_context()._python_frame == inspect.currentframe().f_back
-            if Builder._get_context()
-            else False
-        )
+        def current_frames():
+            if frame := inspect.currentframe():
+                frame = frame.f_back
+                while frame:
+                    yield frame
+                    frame = frame.f_back
 
-        if same_scope:
-            self.builder_parent = Builder._get_context()
-        else:
-            self.builder_parent = None
+        context = Builder._get_context()
+        context_frame = context._python_frame if context else None
+        same_scope = context_frame and context_frame in current_frames()
+
+        self.builder_parent = context if same_scope else None
 
         self._reset_tok = self._current.set(self)
 

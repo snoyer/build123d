@@ -26,6 +26,7 @@ license:
 
 """
 
+import pickle
 import unittest
 from math import pi
 from build123d import *
@@ -209,6 +210,37 @@ class TestBuilder(unittest.TestCase):
         with self.assertRaises(AttributeError):
             a.export_stl("invalid.stl")
 
+    def test_with_functions(self):
+        with BuildPart() as builder1:
+            with BuildSketch():
+                Circle(8)
+            extrude(amount=12)
+
+        def sketch_circle(r: float):
+            with BuildSketch():
+                Circle(r)
+
+        def extrude_cylinder(r: float, h: float):
+            sketch_circle(r)
+            extrude(amount=h)
+
+        with BuildPart() as builder2:
+            extrude_cylinder(8, 12)
+
+        self.assertEqual(pickle.dumps(builder1.part), pickle.dumps(builder2.part))
+
+    def test_with_functions_invalid_context(self):
+
+        def should_be_called_in_BuildPart(r: float, h: float):
+            with BuildSketch():
+                Circle(r)
+            extrude(amount=h)
+
+        with BuildPart():
+            should_be_called_in_BuildPart(8, 12) # should work
+
+        with self.assertRaises(ValueError):
+            should_be_called_in_BuildPart(8, 12) # should not work
 
 class TestBuilderExit(unittest.TestCase):
     def test_multiple(self):
