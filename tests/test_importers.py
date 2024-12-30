@@ -71,13 +71,9 @@ class ImportSVG(unittest.TestCase):
 
     def test_import_svg(self):
         svg_file = Path(__file__).parent / "../tests/svg_import_test.svg"
-        for tag in ["id", "label"]:
+        for tag in ["id", "inkscape:label"]:
             # Import the svg object as a ShapeList
-            svg = import_svg(
-                svg_file,
-                label_by=tag,
-                is_inkscape_label=tag == "label",
-            )
+            svg = import_svg(svg_file, label_by=tag)
 
             # Exact the shape of the plate & holes
             base_faces = svg.filter_by(lambda f: "base" in f.label)

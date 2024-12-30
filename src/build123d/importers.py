@@ -31,6 +31,7 @@ license:
 
 import os
 from os import PathLike, fsdecode
+import re
 import unicodedata
 from math import degrees
 from pathlib import Path
@@ -337,7 +338,6 @@ def import_svg(
     flip_y: bool = True,
     ignore_visibility: bool = False,
     label_by: str = "id",
-    is_inkscape_label: bool = False,
 ) -> ShapeList[Union[Wire, Face]]:
     """import_svg
 
@@ -345,10 +345,9 @@ def import_svg(
         svg_file (Union[str, Path, TextIO]): svg file
         flip_y (bool, optional): flip objects to compensate for svg orientation. Defaults to True.
         ignore_visibility (bool, optional): Defaults to False.
-        label_by (str, optional): xml attribute. Defaults to "id".
-        is_inkscape_label (bool, optional): flag to indicate that the attribute
-            is an Inkscape label like `inkscape:label` - label_by would be set to
-            `label` in this case. Defaults to False.
+        label_by (str, optional): XML attribute to use for imported shapes' `label` property.
+            Defaults to "id".
+            Use `inkscape:label` to read labels set from Inkscape's "Layers and Objects" panel.
 
     Raises:
         ValueError: unexpected shape type
@@ -357,10 +356,8 @@ def import_svg(
         ShapeList[Union[Wire, Face]]: objects contained in svg
     """
     shapes = []
-    label_by = (
-        "{http://www.inkscape.org/namespaces/inkscape}" + label_by
-        if is_inkscape_label
-        else label_by
+    label_by = re.sub(
+        r"^inkscape:(.+)", r"{http://www.inkscape.org/namespaces/inkscape}\1", label_by
     )
     for face_or_wire, color_and_label in import_svg_document(
         svg_file,
