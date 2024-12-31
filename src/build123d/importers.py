@@ -36,6 +36,7 @@ import unicodedata
 from math import degrees
 from pathlib import Path
 from typing import Optional, TextIO, Union
+import warnings
 
 from OCP.BRep import BRep_Builder
 from OCP.BRepGProp import BRepGProp
@@ -338,6 +339,7 @@ def import_svg(
     flip_y: bool = True,
     ignore_visibility: bool = False,
     label_by: str = "id",
+    is_inkscape_label: bool | None = None,  # TODO remove for `1.0` release
 ) -> ShapeList[Union[Wire, Face]]:
     """import_svg
 
@@ -355,6 +357,13 @@ def import_svg(
     Returns:
         ShapeList[Union[Wire, Face]]: objects contained in svg
     """
+    if is_inkscape_label is not None:  # TODO remove for `1.0` release
+        msg = "`is_inkscape_label` parameter is deprecated"
+        if is_inkscape_label:
+            label_by = "inkscape:" + label_by
+            msg += f", use `label_by={label_by!r}` instead"
+        warnings.warn(msg, stacklevel=2)
+
     shapes = []
     label_by = re.sub(
         r"^inkscape:(.+)", r"{http://www.inkscape.org/namespaces/inkscape}\1", label_by
