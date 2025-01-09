@@ -29,7 +29,9 @@ license:
 from dataclasses import dataclass
 from datetime import date
 from math import copysign, floor, gcd, log2, pi
-from typing import ClassVar, Iterable, Optional, Union
+from typing import ClassVar, Optional, Union
+
+from collections.abc import Iterable
 
 from build123d.build_common import IN, MM
 from build123d.build_enums import (
@@ -50,7 +52,7 @@ from build123d.objects_curve import Line, TangentArc
 from build123d.objects_sketch import BaseSketchObject, Polygon, Text
 from build123d.operations_generic import fillet, mirror, sweep
 from build123d.operations_sketch import make_face, trace
-from build123d.topology import Compound, Edge, Sketch, Vertex, Wire
+from build123d.topology import Compound, Curve, Edge, Sketch, Vertex, Wire
 
 
 class ArrowHead(BaseSketchObject):
@@ -112,7 +114,7 @@ class Arrow(BaseSketchObject):
     def __init__(
         self,
         arrow_size: float,
-        shaft_path: Union[Edge, Wire],
+        shaft_path: Edge | Wire,
         shaft_width: float,
         head_at_start: bool = True,
         head_type: HeadType = HeadType.CURVED,
@@ -221,8 +223,8 @@ class Draft:
     def _number_with_units(
         self,
         number: float,
-        tolerance: Union[float, tuple[float, float]] = None,
-        display_units: Optional[bool] = None,
+        tolerance: float | tuple[float, float] = None,
+        display_units: bool | None = None,
     ) -> str:
         """Convert a raw number to a unit of measurement string based on the class settings"""
 
@@ -272,7 +274,7 @@ class Draft:
         return return_value
 
     @staticmethod
-    def _process_path(path: PathDescriptor) -> Union[Edge, Wire]:
+    def _process_path(path: PathDescriptor) -> Edge | Wire:
         """Convert a PathDescriptor into a Edge/Wire"""
         if isinstance(path, (Edge, Wire)):
             processed_path = path
@@ -296,7 +298,7 @@ class Draft:
         label: str,
         line_wire: Wire,
         label_angle: bool,
-        tolerance: Optional[Union[float, tuple[float, float]]],
+        tolerance: float | tuple[float, float] | None,
     ) -> str:
         """Create the str to use as the label text"""
         line_length = line_wire.length
@@ -317,7 +319,7 @@ class Draft:
 
     @staticmethod
     def _sketch_location(
-        path: Union[Edge, Wire], u_value: float, flip: bool = False
+        path: Edge | Wire, u_value: float, flip: bool = False
     ) -> Location:
         """Given a path on Plane.XY, determine the Location for object placement"""
         angle = path.tangent_angle_at(u_value) + int(flip) * 180
@@ -370,7 +372,7 @@ class DimensionLine(BaseSketchObject):
         sketch: Sketch = None,
         label: str = None,
         arrows: tuple[bool, bool] = (True, True),
-        tolerance: Union[float, tuple[float, float]] = None,
+        tolerance: float | tuple[float, float] = None,
         label_angle: bool = False,
         mode: Mode = Mode.ADD,
     ) -> Sketch:
@@ -439,23 +441,25 @@ class DimensionLine(BaseSketchObject):
         overage = shaft_length + draft.pad_around_text + label_length / 2
         label_u_values = [0.5, -overage / path_length, 1 + overage / path_length]
 
-        # d_lines = Sketch(children=arrows[0])
         d_lines = {}
-        # for arrow_pair in arrow_shapes:
         for u_value in label_u_values:
-            d_line = Sketch()
-            for add_arrow, arrow_shape in zip(arrows, arrow_shapes):
-                if add_arrow:
-                    d_line += arrow_shape
+            select_arrow_shapes = [
+                arrow_shape
+                for add_arrow, arrow_shape in zip(arrows, arrow_shapes)
+                if add_arrow
+            ]
+            d_line = Sketch(select_arrow_shapes)
             flip_label = path_obj.tangent_at(u_value).get_angle(Vector(1, 0, 0)) >= 180
             loc = Draft._sketch_location(path_obj, u_value, flip_label)
             placed_label = label_shape.located(loc)
-            self_intersection = d_line.intersect(placed_label).area
+            self_intersection = Sketch.intersect(d_line, placed_label).area
             d_line += placed_label
             bbox_size = d_line.bounding_box().size
 
             # Minimize size while avoiding intersections
-            common_area = 0.0 if sketch is None else d_line.intersect(sketch).area
+            common_area = (
+                0.0 if sketch is None else Sketch.intersect(d_line, sketch).area
+            )
             common_area += self_intersection
             score = (d_line.area - 10 * common_area) / bbox_size.X
             d_lines[d_line] = score
@@ -506,7 +510,7 @@ class ExtensionLine(BaseSketchObject):
         sketch: Sketch = None,
         label: str = None,
         arrows: tuple[bool, bool] = (True, True),
-        tolerance: Union[float, tuple[float, float]] = None,
+        tolerance: float | tuple[float, float] = None,
         label_angle: bool = False,
         project_line: VectorLike = None,
         mode: Mode = Mode.ADD,
@@ -620,7 +624,7 @@ class TechnicalDrawing(BaseSketchObject):
     def __init__(
         self,
         designed_by: str = "build123d",
-        design_date: Optional[date] = None,
+        design_date: date | None = None,
         page_size: PageSize = PageSize.A4,
         title: str = "Title",
         sub_title: str = "Sub Title",
@@ -702,7 +706,10 @@ class TechnicalDrawing(BaseSketchObject):
         )
         bf_pnt3 = box_frame_curve.edges().sort_by(Axis.X)[0] @ (1 / 3)
         bf_pnt4 = box_frame_curve.edges().sort_by(Axis.X)[0] @ (2 / 3)
-        box_frame_curve += Edge.make_line(bf_pnt3, (bf_pnt2.X, bf_pnt3.Y))
+        box_frame_curve = Curve() + [
+            box_frame_curve,
+            Edge.make_line(bf_pnt3, (bf_pnt2.X, bf_pnt3.Y)),
+        ]
         box_frame_curve += Edge.make_line(bf_pnt4, (bf_pnt2.X, bf_pnt4.Y))
         bf_pnt5 = box_frame_curve.edges().sort_by(Axis.Y)[-1] @ (1 / 3)
         bf_pnt6 = box_frame_curve.edges().sort_by(Axis.Y)[-1] @ (2 / 3)

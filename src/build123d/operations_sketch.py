@@ -28,7 +28,9 @@ license:
 """
 
 from __future__ import annotations
-from typing import Iterable, Union
+from typing import Union
+
+from collections.abc import Iterable
 from build123d.build_enums import Mode, SortBy
 from build123d.topology import (
     Compound,
@@ -40,9 +42,8 @@ from build123d.topology import (
     Sketch,
     topo_explore_connected_edges,
     topo_explore_common_vertex,
-    TOLERANCE,
 )
-from build123d.geometry import Vector
+from build123d.geometry import Vector, TOLERANCE
 from build123d.build_common import flatten_sequence, validate_inputs
 from build123d.build_sketch import BuildSketch
 from scipy.spatial import Voronoi
@@ -194,7 +195,7 @@ def full_round(
 
 
 def make_face(
-    edges: Union[Edge, Iterable[Edge]] = None, mode: Mode = Mode.ADD
+    edges: Edge | Iterable[Edge] = None, mode: Mode = Mode.ADD
 ) -> Sketch:
     """Sketch Operation: make_face
 
@@ -229,7 +230,7 @@ def make_face(
 
 
 def make_hull(
-    edges: Union[Edge, Iterable[Edge]] = None, mode: Mode = Mode.ADD
+    edges: Edge | Iterable[Edge] = None, mode: Mode = Mode.ADD
 ) -> Sketch:
     """Sketch Operation: make_hull
 
@@ -267,7 +268,7 @@ def make_hull(
 
 
 def trace(
-    lines: Union[Curve, Edge, Wire, Iterable[Union[Curve, Edge, Wire]]] = None,
+    lines: Curve | Edge | Wire | Iterable[Curve | Edge | Wire] = None,
     line_width: float = 1,
     mode: Mode = Mode.ADD,
 ) -> Sketch:
@@ -306,4 +307,9 @@ def trace(
         context.pending_edges = ShapeList()
 
     combined_faces = Face.fuse(*new_faces) if len(new_faces) > 1 else new_faces[0]
-    return Sketch(combined_faces.wrapped)
+    result = (
+        Sketch(combined_faces)
+        if isinstance(combined_faces, list)
+        else Sketch(combined_faces.wrapped)
+    )
+    return result

@@ -27,7 +27,9 @@ license:
 """
 
 from __future__ import annotations
-from typing import Union, Iterable
+from typing import Union
+
+from collections.abc import Iterable
 from build123d.build_enums import Mode, Until, Kind, Side
 from build123d.build_part import BuildPart
 from build123d.geometry import Axis, Plane, Vector, VectorLike
@@ -54,11 +56,11 @@ from build123d.build_common import (
 
 
 def extrude(
-    to_extrude: Union[Face, Sketch] = None,
+    to_extrude: Face | Sketch = None,
     amount: float = None,
     dir: VectorLike = None,  # pylint: disable=redefined-builtin
     until: Until = None,
-    target: Union[Compound, Solid] = None,
+    target: Compound | Solid = None,
     both: bool = False,
     taper: float = 0.0,
     clean: bool = True,
@@ -173,7 +175,10 @@ def extrude(
         context._add_to_context(*new_solids, clean=clean, mode=mode)
     else:
         if len(new_solids) > 1:
-            new_solids = [new_solids.pop().fuse(*new_solids)]
+            fused_solids = new_solids.pop().fuse(*new_solids)
+            new_solids = (
+                fused_solids if isinstance(fused_solids, list) else [fused_solids]
+            )
         if clean:
             new_solids = [solid.clean() for solid in new_solids]
 
@@ -181,7 +186,7 @@ def extrude(
 
 
 def loft(
-    sections: Union[Face, Sketch, Iterable[Union[Vertex, Face, Sketch]]] = None,
+    sections: Face | Sketch | Iterable[Vertex | Face | Sketch] = None,
     ruled: bool = False,
     clean: bool = True,
     mode: Mode = Mode.ADD,
@@ -256,8 +261,8 @@ def loft(
 
 def make_brake_formed(
     thickness: float,
-    station_widths: Union[float, Iterable[float]],
-    line: Union[Edge, Wire, Curve] = None,
+    station_widths: float | Iterable[float],
+    line: Edge | Wire | Curve = None,
     side: Side = Side.LEFT,
     kind: Kind = Kind.ARC,
     clean: bool = True,
@@ -361,8 +366,8 @@ def make_brake_formed(
 
 
 def project_workplane(
-    origin: Union[VectorLike, Vertex],
-    x_dir: Union[VectorLike, Vertex],
+    origin: VectorLike | Vertex,
+    x_dir: VectorLike | Vertex,
     projection_dir: VectorLike,
     distance: float,
 ) -> Plane:
@@ -417,7 +422,7 @@ def project_workplane(
 
 
 def revolve(
-    profiles: Union[Face, Iterable[Face]] = None,
+    profiles: Face | Iterable[Face] = None,
     axis: Axis = Axis.Z,
     revolution_arc: float = 360.0,
     clean: bool = True,
@@ -475,7 +480,7 @@ def revolve(
 
 def section(
     obj: Part = None,
-    section_by: Union[Plane, Iterable[Plane]] = Plane.XZ,
+    section_by: Plane | Iterable[Plane] = Plane.XZ,
     height: float = 0.0,
     clean: bool = True,
     mode: Mode = Mode.PRIVATE,
@@ -537,7 +542,7 @@ def section(
 
 
 def thicken(
-    to_thicken: Union[Face, Sketch] = None,
+    to_thicken: Face | Sketch = None,
     amount: float = None,
     normal_override: VectorLike = None,
     both: bool = False,
@@ -597,7 +602,9 @@ def thicken(
         )
         for direction in [1, -1] if both else [1]:
             new_solids.append(
-                face.thicken(depth=amount, normal_override=face_normal * direction)
+                Solid.thicken(
+                    face, depth=amount, normal_override=face_normal * direction
+                )
             )
 
     if context is not None:
