@@ -3559,7 +3559,7 @@ class TestShape(DirectApiTestCase):
         with self.assertRaises(ValueError):
             empty.geom_type
         self.assertIs(empty, empty.fix())
-        self.assertEqual(empty.hash_code(), 0)
+        self.assertEqual(hash(empty), 0)
         self.assertFalse(empty.is_same(Solid()))
         self.assertFalse(empty.is_equal(Solid()))
         self.assertTrue(empty.is_valid())
