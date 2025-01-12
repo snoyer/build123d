@@ -237,7 +237,7 @@ class Compound(Mixin3D, Shape[TopoDS_Compound]):
         font: str = "Arial",
         font_path: str | None = None,
         font_style: FontStyle = FontStyle.REGULAR,
-        align: Align | tuple[Align, Align] = (Align.CENTER, Align.CENTER),
+        align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         position_on_path: float = 0.0,
         text_path: Edge | Wire | None = None,
     ) -> Compound:
