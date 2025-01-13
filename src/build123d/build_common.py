@@ -243,7 +243,7 @@ class Builder(ABC):
         self.builder_parent = None
         self.lasts: dict = {Vertex: [], Edge: [], Face: [], Solid: []}
         self.workplanes_context = None
-        self.exit_workplanes = None
+        self.exit_workplanes: list[Plane] = []
         self.obj_before: Shape | None = None
         self.to_combine: list[Shape] = []
 

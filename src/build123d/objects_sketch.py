@@ -31,7 +31,7 @@ from __future__ import annotations
 import trianglesolver
 
 from math import cos, degrees, pi, radians, sin, tan
-from typing import Union
+from typing import cast
 
 from collections.abc import Iterable
 
@@ -85,7 +85,7 @@ class BaseSketchObject(Sketch):
             align = tuplify(align, 2)
             obj.move(Location(obj.bounding_box().to_align_offset(align)))
 
-        context: BuildSketch = BuildSketch._get_context(self, log=False)
+        context: BuildSketch | None = BuildSketch._get_context(self, log=False)
         if context is None:
             new_faces = obj.moved(Rotation(0, 0, rotation)).faces()
 
@@ -95,11 +95,11 @@ class BaseSketchObject(Sketch):
 
             obj = obj.moved(Rotation(0, 0, rotation))
 
-            new_faces = [
+            new_faces = ShapeList(
                 face.moved(location)
                 for face in obj.faces()
                 for location in LocationList._get_context().local_locations
-            ]
+            )
             if isinstance(context, BuildSketch):
                 context._add_to_context(*new_faces, mode=mode)
 
@@ -126,7 +126,7 @@ class Circle(BaseSketchObject):
         align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.radius = radius
@@ -160,7 +160,7 @@ class Ellipse(BaseSketchObject):
         align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.x_radius = x_radius
@@ -199,7 +199,7 @@ class Polygon(BaseSketchObject):
         align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         flattened_pts = flatten_sequence(*pts)
@@ -235,7 +235,7 @@ class Rectangle(BaseSketchObject):
         align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.width = width
@@ -272,7 +272,7 @@ class RectangleRounded(BaseSketchObject):
         align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         if width <= 2 * radius or height <= 2 * radius:
@@ -317,7 +317,7 @@ class RegularPolygon(BaseSketchObject):
         mode: Mode = Mode.ADD,
     ):
         # pylint: disable=too-many-locals
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         if side_count < 3:
@@ -381,7 +381,7 @@ class SlotArc(BaseSketchObject):
         rotation: float = 0,
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.arc = arc
@@ -417,7 +417,7 @@ class SlotCenterPoint(BaseSketchObject):
         rotation: float = 0,
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         center_v = Vector(center)
@@ -472,7 +472,7 @@ class SlotCenterToCenter(BaseSketchObject):
                 f"Requires center_separation > 0. Got: {center_separation=}"
             )
 
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.center_separation = center_separation
@@ -518,14 +518,14 @@ class SlotOverall(BaseSketchObject):
                 f"Slot requires that width > height. Got: {width=}, {height=}"
             )
 
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.width = width
         self.slot_height = height
 
         if width != height:
-            face: Face | None = Face(
+            face = Face(
                 Wire(
                     [
                         Edge.make_line(Vector(-width / 2 + height / 2, 0, 0), Vector()),
@@ -534,7 +534,7 @@ class SlotOverall(BaseSketchObject):
                 ).offset_2d(height / 2)
             )
         else:
-            face = Circle(width / 2, mode=mode).face()
+            face = cast(Face, Circle(width / 2, mode=mode).face())
         super().__init__(face, rotation, align, mode)
 
 
@@ -574,7 +574,7 @@ class Text(BaseSketchObject):
         rotation: float = 0.0,
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         self.txt = txt
@@ -633,7 +633,7 @@ class Trapezoid(BaseSketchObject):
         align: Align | tuple[Align, Align] | None = (Align.CENTER, Align.CENTER),
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         right_side_angle = left_side_angle if not right_side_angle else right_side_angle
@@ -720,7 +720,7 @@ class Triangle(BaseSketchObject):
         rotation: float = 0,
         mode: Mode = Mode.ADD,
     ):
-        context = BuildSketch._get_context(self)
+        context: BuildSketch | None = BuildSketch._get_context(self)
         validate_inputs(context, self)
 
         if [v is None for v in [a, b, c]].count(True) == 3 or [

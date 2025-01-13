@@ -30,7 +30,7 @@ license:
 import copy
 import logging
 from math import radians, tan
-from typing import Union
+from typing import cast, TypeAlias
 
 from collections.abc import Iterable
 
@@ -78,13 +78,13 @@ from build123d.topology import (
 logging.getLogger("build123d").addHandler(logging.NullHandler())
 logger = logging.getLogger("build123d")
 
-#:TypeVar("AddType"): Type of objects which can be added to a builder
-AddType = Union[Edge, Wire, Face, Solid, Compound, Builder]
+AddType: TypeAlias = Edge | Wire | Face | Solid | Compound | Builder
+"""Type of objects which can be added to a builder"""
 
 
 def add(
     objects: AddType | Iterable[AddType],
-    rotation: float | RotationLike = None,
+    rotation: float | RotationLike | None = None,
     clean: bool = True,
     mode: Mode = Mode.ADD,
 ) -> Compound:
@@ -101,22 +101,28 @@ def add(
         Edges and Wires are added to line.
 
     Args:
-        objects (Union[Edge, Wire, Face, Solid, Compound]  or Iterable of): objects to add
-        rotation (Union[float, RotationLike], optional): rotation angle for sketch,
+        objects (Edge |  Wire |  Face |  Solid |  Compound  or Iterable of): objects to add
+        rotation (float |  RotationLike, optional): rotation angle for sketch,
             rotation about each axis for part. Defaults to None.
         clean (bool, optional): Remove extraneous internal structure. Defaults to True.
        mode (Mode, optional): combine mode. Defaults to Mode.ADD.
     """
-    context: Builder = Builder._get_context(None)
+    context: Builder | None = Builder._get_context(None)
     if context is None:
         raise RuntimeError("Add must have an active builder context")
 
-    object_iter = objects if isinstance(objects, Iterable) else [objects]
+    if isinstance(objects, Iterable) and not isinstance(objects, Compound):
+        object_list = list(objects)
+    else:
+        object_list = [objects]
     object_iter = [
-        obj.unwrap(fully=False) if isinstance(obj, Compound) else obj
-        for obj in object_iter
+        (
+            obj.unwrap(fully=False)
+            if isinstance(obj, Compound)
+            else obj._obj if isinstance(obj, Builder) else obj
+        )
+        for obj in object_list
     ]
-    object_iter = [obj._obj if isinstance(obj, Builder) else obj for obj in object_iter]
 
     validate_inputs(context, "add", object_iter)
 
@@ -201,7 +207,7 @@ def add(
 
 
 def bounding_box(
-    objects: Shape | Iterable[Shape] = None,
+    objects: Shape | Iterable[Shape] | None = None,
     mode: Mode = Mode.PRIVATE,
 ) -> Sketch | Part:
     """Generic Operation: Add Bounding Box
@@ -214,7 +220,7 @@ def bounding_box(
         objects (Shape or Iterable of): objects to create bbox for
         mode (Mode, optional): combination mode. Defaults to Mode.ADD.
     """
-    context: Builder = Builder._get_context("bounding_box")
+    context: Builder | None = Builder._get_context("bounding_box")
 
     if objects is None:
         if context is None or context is not None and context._obj is None:
@@ -261,16 +267,16 @@ def bounding_box(
     return Part(Compound(new_objects).wrapped)
 
 
-#:TypeVar("ChamferFilletType"): Type of objects which can be chamfered or filleted
-ChamferFilletType = Union[Edge, Vertex]
+ChamferFilletType: TypeAlias = Edge | Vertex
+"""Type of objects which can be chamfered or filleted"""
 
 
 def chamfer(
     objects: ChamferFilletType | Iterable[ChamferFilletType],
     length: float,
-    length2: float = None,
-    angle: float = None,
-    reference: Edge | Face = None,
+    length2: float | None = None,
+    angle: float | None = None,
+    reference: Edge | Face | None = None,
 ) -> Sketch | Part:
     """Generic Operation: chamfer
 
@@ -279,11 +285,11 @@ def chamfer(
     Chamfer the given sequence of edges or vertices.
 
     Args:
-        objects (Union[Edge,Vertex]  or Iterable of): edges or vertices to chamfer
+        objects (Edge | Vertex  or Iterable of): edges or vertices to chamfer
         length (float): chamfer size
         length2 (float, optional): asymmetric chamfer size. Defaults to None.
         angle (float, optional): chamfer angle in degrees. Defaults to None.
-        reference (Union[Edge,Face]): identifies the side where length is measured. Edge(s) must
+        reference (Edge | Face): identifies the side where length is measured. Edge(s) must
             be part of the face. Vertex/Vertices must be part of edge
 
     Raises:
@@ -293,7 +299,7 @@ def chamfer(
         ValueError: Only one of length2 or angle should be provided
         ValueError: reference can only be used in conjunction with length2 or angle
     """
-    context: Builder = Builder._get_context("chamfer")
+    context: Builder | None = Builder._get_context("chamfer")
     if length2 and angle:
         raise ValueError("Only one of length2 or angle should be provided")
 
@@ -367,23 +373,27 @@ def chamfer(
             raise ValueError("1D fillet operation takes only Vertices")
         # Remove any end vertices as these can't be filleted
         if not target.is_closed:
-            object_list = filter(
-                lambda v: not (
-                    isclose_b(
-                        (Vector(*v.to_tuple()) - target.position_at(0)).length,
-                        0.0,
-                    )
-                    or isclose_b(
-                        (Vector(*v.to_tuple()) - target.position_at(1)).length,
-                        0.0,
-                    )
-                ),
-                object_list,
+            object_list = ShapeList(
+                filter(
+                    lambda v: not (
+                        isclose_b(
+                            (Vector(*v.to_tuple()) - target.position_at(0)).length,
+                            0.0,
+                        )
+                        or isclose_b(
+                            (Vector(*v.to_tuple()) - target.position_at(1)).length,
+                            0.0,
+                        )
+                    ),
+                    object_list,
+                )
             )
         new_wire = target.chamfer_2d(length, length2, object_list, reference)
         if context is not None:
             context._add_to_context(new_wire, mode=Mode.REPLACE)
         return new_wire
+
+    raise ValueError("Invalid object dimension")
 
 
 def fillet(
@@ -398,7 +408,7 @@ def fillet(
     either end of an open line will be automatically skipped.
 
     Args:
-        objects (Union[Edge,Vertex] or Iterable of): edges or vertices to fillet
+        objects (Edge | Vertex or Iterable of): edges or vertices to fillet
         radius (float): fillet size - must be less than 1/2 local width
 
     Raises:
@@ -407,7 +417,7 @@ def fillet(
         ValueError: objects must be Vertices
         ValueError: nothing to fillet
     """
-    context: Builder = Builder._get_context("fillet")
+    context: Builder | None = Builder._get_context("fillet")
     if (objects is None and context is None) or (
         objects is None and context is not None and context._obj is None
     ):
@@ -466,31 +476,35 @@ def fillet(
             raise ValueError("1D fillet operation takes only Vertices")
         # Remove any end vertices as these can't be filleted
         if not target.is_closed:
-            object_list = filter(
-                lambda v: not (
-                    isclose_b(
-                        (Vector(*v.to_tuple()) - target.position_at(0)).length,
-                        0.0,
-                    )
-                    or isclose_b(
-                        (Vector(*v.to_tuple()) - target.position_at(1)).length,
-                        0.0,
-                    )
-                ),
-                object_list,
+            object_list = ShapeList(
+                filter(
+                    lambda v: not (
+                        isclose_b(
+                            (Vector(*v.to_tuple()) - target.position_at(0)).length,
+                            0.0,
+                        )
+                        or isclose_b(
+                            (Vector(*v.to_tuple()) - target.position_at(1)).length,
+                            0.0,
+                        )
+                    ),
+                    object_list,
+                )
             )
         new_wire = target.fillet_2d(radius, object_list)
         if context is not None:
             context._add_to_context(new_wire, mode=Mode.REPLACE)
         return new_wire
 
+    raise ValueError("Invalid object dimension")
 
-#:TypeVar("MirrorType"): Type of objects which can be mirrored
-MirrorType = Union[Edge, Wire, Face, Compound, Curve, Sketch, Part]
+
+MirrorType: TypeAlias = Edge | Wire | Face | Compound | Curve | Sketch | Part
+"""Type of objects which can be mirrored"""
 
 
 def mirror(
-    objects: MirrorType | Iterable[MirrorType] = None,
+    objects: MirrorType | Iterable[MirrorType] | None = None,
     about: Plane = Plane.XZ,
     mode: Mode = Mode.ADD,
 ) -> Curve | Sketch | Part | Compound:
@@ -501,15 +515,18 @@ def mirror(
     Mirror a sequence of objects over the given plane.
 
     Args:
-        objects (Union[Edge, Face,Compound]  or Iterable of): objects to mirror
+        objects (Edge |  Face | Compound  or Iterable of): objects to mirror
         about (Plane, optional): reference plane. Defaults to "XZ".
         mode (Mode, optional): combination mode. Defaults to Mode.ADD.
 
     Raises:
         ValueError: missing objects
     """
-    context: Builder = Builder._get_context("mirror")
-    object_list = objects if isinstance(objects, Iterable) else [objects]
+    context: Builder | None = Builder._get_context("mirror")
+    if isinstance(objects, Iterable) and not isinstance(objects, Compound):
+        object_list = list(objects)
+    else:
+        object_list = [objects]
 
     if objects is None:
         if context is None or context is not None and context._obj is None:
@@ -535,18 +552,18 @@ def mirror(
     return mirrored_compound
 
 
-#:TypeVar("OffsetType"): Type of objects which can be offset
-OffsetType = Union[Edge, Face, Solid, Compound]
+OffsetType: TypeAlias = Edge | Face | Solid | Compound
+"""Type of objects which can be offset"""
 
 
 def offset(
-    objects: OffsetType | Iterable[OffsetType] = None,
+    objects: OffsetType | Iterable[OffsetType] | None = None,
     amount: float = 0,
-    openings: Face | list[Face] = None,
+    openings: Face | list[Face] | None = None,
     kind: Kind = Kind.ARC,
     side: Side = Side.BOTH,
     closed: bool = True,
-    min_edge_length: float = None,
+    min_edge_length: float | None = None,
     mode: Mode = Mode.REPLACE,
 ) -> Curve | Sketch | Part | Compound:
     """Generic Operation: offset
@@ -559,7 +576,7 @@ def offset(
     a hollow box with no lid.
 
     Args:
-        objects (Union[Edge, Face, Solid, Compound]  or Iterable of): objects to offset
+        objects (Edge |  Face |  Solid |  Compound  or Iterable of): objects to offset
         amount (float): positive values external, negative internal
         openings (list[Face], optional), sequence of faces to open in part.
             Defaults to None.
@@ -575,7 +592,7 @@ def offset(
         ValueError: missing objects
         ValueError: Invalid object type
     """
-    context: Builder = Builder._get_context("offset")
+    context: Builder | None = Builder._get_context("offset")
 
     if objects is None:
         if context is None or context is not None and context._obj is None:
@@ -624,15 +641,19 @@ def offset(
                 pass
         # inner wires may go beyond the outer wire so subtract faces
         new_face = Face(outer_wire)
-        if inner_wires:
-            inner_faces = [Face(w) for w in inner_wires]
-            new_face = new_face.cut(*inner_faces)
-            if isinstance(new_face, Compound):
-                new_face = new_face.unwrap(fully=True)
-
         if (new_face.normal_at() - face.normal_at()).length > 0.001:
             new_face = -new_face
-        new_faces.append(new_face)
+        if inner_wires:
+            inner_faces = [Face(w) for w in inner_wires]
+            subtraction = new_face.cut(*inner_faces)
+            if isinstance(subtraction, Compound):
+                new_faces.append(new_face.unwrap(fully=True))
+            elif isinstance(subtraction, ShapeList):
+                new_faces.extend(subtraction)
+            else:
+                new_faces.append(subtraction)
+        else:
+            new_faces.append(new_face)
     if edges:
         if len(edges) == 1 and edges[0].geom_type == GeomType.LINE:
             new_wires = [
@@ -679,14 +700,14 @@ def offset(
     return offset_compound
 
 
-#:TypeVar("ProjectType"): Type of objects which can be projected
-ProjectType = Union[Edge, Face, Wire, Vector, Vertex]
+ProjectType: TypeAlias = Edge | Face | Wire | Vector | Vertex
+"""Type of objects which can be projected"""
 
 
 def project(
-    objects: ProjectType | Iterable[ProjectType] = None,
-    workplane: Plane = None,
-    target: Solid | Compound | Part = None,
+    objects: ProjectType | Iterable[ProjectType] | None = None,
+    workplane: Plane | None = None,
+    target: Solid | Compound | Part | None = None,
     mode: Mode = Mode.ADD,
 ) -> Curve | Sketch | Compound | ShapeList[Vector]:
     """Generic Operation: project
@@ -704,7 +725,7 @@ def project(
     BuildSketch and Edge/Wires into BuildLine.
 
     Args:
-        objects (Union[Edge, Face, Wire, VectorLike, Vertex] or Iterable of):
+        objects (Edge |  Face |  Wire |  VectorLike |  Vertex or Iterable of):
             objects or points to project
         workplane (Plane, optional): screen workplane
         mode (Mode, optional): combination mode. Defaults to Mode.ADD.
@@ -716,7 +737,7 @@ def project(
         ValueError: Edges, wires and points can only be projected in PRIVATE mode
         RuntimeError: BuildPart doesn't have a project operation
     """
-    context: Builder = Builder._get_context("project")
+    context: Builder | None = Builder._get_context("project")
 
     if isinstance(objects, GroupBy):
         raise ValueError("project doesn't accept group_by, did you miss [n]?")
@@ -742,8 +763,8 @@ def project(
     ]
     object_size = Compound(children=shape_list).bounding_box(optimal=False).diagonal
 
-    point_list = [o for o in object_list if isinstance(o, (Vector, Vertex))]
-    point_list = [Vector(pnt) for pnt in point_list]
+    vct_vrt_list = [o for o in object_list if isinstance(o, (Vector, Vertex))]
+    point_list = [Vector(pnt) for pnt in vct_vrt_list]
     face_list = [o for o in object_list if isinstance(o, Face)]
     line_list = [o for o in object_list if isinstance(o, (Edge, Wire))]
 
@@ -764,6 +785,7 @@ def project(
                 raise ValueError(
                     "Edges, wires and points can only be projected in PRIVATE mode"
                 )
+    working_plane = cast(Plane, workplane)
 
     # BuildLine and BuildSketch are from target to workplane while BuildPart is
     # from workplane to target so the projection direction needs to be flipped
@@ -775,7 +797,7 @@ def project(
             target = context._obj
         projection_flip = -1
     else:
-        target = Face.make_rect(3 * object_size, 3 * object_size, plane=workplane)
+        target = Face.make_rect(3 * object_size, 3 * object_size, plane=working_plane)
 
     validate_inputs(context, "project")
 
@@ -783,37 +805,39 @@ def project(
     obj: Shape
     for obj in face_list + line_list:
         obj_to_screen = (target.center() - obj.center()).normalized()
-        if workplane.from_local_coords(obj_to_screen).Z < 0:
-            projection_direction = -workplane.z_dir * projection_flip
+        if working_plane.from_local_coords(obj_to_screen).Z < 0:
+            projection_direction = -working_plane.z_dir * projection_flip
         else:
-            projection_direction = workplane.z_dir * projection_flip
+            projection_direction = working_plane.z_dir * projection_flip
         projection = obj.project_to_shape(target, projection_direction)
         if projection:
             if isinstance(context, BuildSketch):
                 projected_shapes.extend(
-                    [workplane.to_local_coords(p) for p in projection]
+                    [working_plane.to_local_coords(p) for p in projection]
                 )
             elif isinstance(context, BuildLine):
                 projected_shapes.extend(projection)
             else:  # BuildPart
                 projected_shapes.append(projection[0])
 
-    projected_points = []
+    projected_points: ShapeList[Vector] = ShapeList()
     for pnt in point_list:
-        pnt_to_target = (workplane.origin - pnt).normalized()
-        if workplane.from_local_coords(pnt_to_target).Z < 0:
-            projection_axis = -Axis(pnt, workplane.z_dir * projection_flip)
+        pnt_to_target = (working_plane.origin - pnt).normalized()
+        if working_plane.from_local_coords(pnt_to_target).Z < 0:
+            projection_axis = -Axis(pnt, working_plane.z_dir * projection_flip)
         else:
-            projection_axis = Axis(pnt, workplane.z_dir * projection_flip)
-        projection = workplane.to_local_coords(workplane.intersect(projection_axis))
-        if projection is not None:
-            projected_points.append(projection)
+            projection_axis = Axis(pnt, working_plane.z_dir * projection_flip)
+        intersection = working_plane.intersect(projection_axis)
+        if isinstance(intersection, Axis):
+            raise RuntimeError("working_plane and projection_axis are parallel")
+        if intersection is not None:
+            projected_points.append(working_plane.to_local_coords(intersection))
 
     if context is not None:
         context._add_to_context(*projected_shapes, mode=mode)
 
     if projected_points:
-        result = ShapeList(projected_points)
+        result = projected_points
     else:
         result = Compound(projected_shapes)
         if all([obj._dim == 2 for obj in object_list]):
@@ -825,7 +849,7 @@ def project(
 
 
 def scale(
-    objects: Shape | Iterable[Shape] = None,
+    objects: Shape | Iterable[Shape] | None = None,
     by: float | tuple[float, float, float] = 1,
     mode: Mode = Mode.REPLACE,
 ) -> Curve | Sketch | Part | Compound:
@@ -838,14 +862,14 @@ def scale(
     line, circle, etc.
 
     Args:
-        objects (Union[Edge, Face, Compound, Solid] or Iterable of): objects to scale
-        by (Union[float, tuple[float, float, float]]): scale factor
+        objects (Edge |  Face |  Compound |  Solid or Iterable of): objects to scale
+        by (float | tuple[float, float, float]): scale factor
         mode (Mode, optional): combination mode. Defaults to Mode.REPLACE.
 
     Raises:
         ValueError: missing objects
     """
-    context: Builder = Builder._get_context("scale")
+    context: Builder | None = Builder._get_context("scale")
 
     if objects is None:
         if context is None or context is not None and context._obj is None:
@@ -863,12 +887,12 @@ def scale(
         and len(by) == 3
         and all(isinstance(s, (int, float)) for s in by)
     ):
-        factor = Vector(by)
+        by_vector = Vector(by)
         scale_matrix = Matrix(
             [
-                [factor.X, 0.0, 0.0, 0.0],
-                [0.0, factor.Y, 0.0, 0.0],
-                [0.0, 0.0, factor.Z, 0.0],
+                [by_vector.X, 0.0, 0.0, 0.0],
+                [0.0, by_vector.Y, 0.0, 0.0],
+                [0.0, 0.0, by_vector.Z, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ]
         )
@@ -877,9 +901,12 @@ def scale(
 
     new_objects = []
     for obj in object_list:
+        if obj is None:
+            continue
         current_location = obj.location
+        assert current_location is not None
         obj_at_origin = obj.located(Location(Vector()))
-        if isinstance(factor, float):
+        if isinstance(by, (int, float)):
             new_object = obj_at_origin.scale(factor).locate(current_location)
         else:
             new_object = obj_at_origin.transform_geometry(scale_matrix).locate(
@@ -900,12 +927,12 @@ def scale(
     return scale_compound.unwrap(fully=False)
 
 
-#:TypeVar("SplitType"): Type of objects which can be offset
-SplitType = Union[Edge, Wire, Face, Solid]
+SplitType: TypeAlias = Edge | Wire | Face | Solid
+"""Type of objects which can be split"""
 
 
 def split(
-    objects: SplitType | Iterable[SplitType] = None,
+    objects: SplitType | Iterable[SplitType] | None = None,
     bisect_by: Plane | Face | Shell = Plane.XZ,
     keep: Keep = Keep.TOP,
     mode: Mode = Mode.REPLACE,
@@ -917,8 +944,8 @@ def split(
     Bisect object with plane and keep either top, bottom or both.
 
     Args:
-        objects (Union[Edge, Wire, Face, Solid] or Iterable of), objects to split
-        bisect_by (Union[Plane, Face], optional): plane to segment part.
+        objects (Edge |  Wire |  Face |  Solid or Iterable of), objects to split
+        bisect_by (Plane |  Face, optional): plane to segment part.
             Defaults to Plane.XZ.
         keep (Keep, optional): selector for which segment to keep. Defaults to Keep.TOP.
         mode (Mode, optional): combination mode. Defaults to Mode.REPLACE.
@@ -926,7 +953,7 @@ def split(
     Raises:
         ValueError: missing objects
     """
-    context: Builder = Builder._get_context("split")
+    context: Builder | None = Builder._get_context("split")
 
     if objects is None:
         if context is None or context is not None and context._obj is None:
@@ -937,7 +964,7 @@ def split(
 
     validate_inputs(context, "split", object_list)
 
-    new_objects = []
+    new_objects: list[SplitType] = []
     for obj in object_list:
         bottom = None
         if keep == Keep.BOTH:
@@ -963,18 +990,18 @@ def split(
     return split_compound
 
 
-#:TypeVar("SweepType"): Type of objects which can be swept
-SweepType = Union[Compound, Edge, Wire, Face, Solid]
+SweepType: TypeAlias = Compound | Edge | Wire | Face | Solid
+"""Type of objects which can be swept"""
 
 
 def sweep(
-    sections: SweepType | Iterable[SweepType] = None,
-    path: Curve | Edge | Wire | Iterable[Edge] = None,
+    sections: SweepType | Iterable[SweepType] | None = None,
+    path: Curve | Edge | Wire | Iterable[Edge] | None = None,
     multisection: bool = False,
     is_frenet: bool = False,
     transition: Transition = Transition.TRANSFORMED,
-    normal: VectorLike = None,
-    binormal: Edge | Wire = None,
+    normal: VectorLike | None = None,
+    binormal: Edge | Wire | None = None,
     clean: bool = True,
     mode: Mode = Mode.ADD,
 ) -> Part | Sketch:
@@ -983,19 +1010,19 @@ def sweep(
     Sweep pending 1D or 2D objects along path.
 
     Args:
-        sections (Union[Compound, Edge, Wire, Face, Solid]): cross sections to sweep into object
-        path (Union[Curve, Edge, Wire], optional): path to follow.
+        sections (Compound |  Edge |  Wire |  Face |  Solid): cross sections to sweep into object
+        path (Curve |  Edge |  Wire, optional): path to follow.
             Defaults to context pending_edges.
         multisection (bool, optional): sweep multiple on path. Defaults to False.
         is_frenet (bool, optional): use frenet algorithm. Defaults to False.
         transition (Transition, optional): discontinuity handling option.
             Defaults to Transition.TRANSFORMED.
         normal (VectorLike, optional): fixed normal. Defaults to None.
-        binormal (Union[Edge, Wire], optional): guide rotation along path. Defaults to None.
+        binormal (Edge |  Wire, optional): guide rotation along path. Defaults to None.
         clean (bool, optional): Remove extraneous internal structure. Defaults to True.
         mode (Mode, optional): combination. Defaults to Mode.ADD.
     """
-    context: Builder = Builder._get_context("sweep")
+    context: Builder | None = Builder._get_context("sweep")
 
     section_list = (
         [*sections] if isinstance(sections, (list, tuple, filter)) else [sections]
@@ -1005,7 +1032,11 @@ def sweep(
     validate_inputs(context, "sweep", section_list)
 
     if path is None:
-        if context is None or context is not None and not context.pending_edges:
+        if (
+            context is None
+            or not isinstance(context, (BuildPart, BuildSketch))
+            or not context.pending_edges
+        ):
             raise ValueError("path must be provided")
         path_wire = Wire(context.pending_edges)
         context.pending_edges = []
@@ -1030,8 +1061,8 @@ def sweep(
         else:
             raise ValueError("No sections provided")
 
-    edge_list = []
-    face_list = []
+    edge_list: list[Edge] = []
+    face_list: list[Face] = []
     for sec in section_list:
         if isinstance(sec, (Curve, Wire, Edge)):
             edge_list.extend(sec.edges())
@@ -1040,6 +1071,7 @@ def sweep(
 
     # sweep to create solids
     new_solids = []
+    binormal_mode: Wire | Vector | None
     if face_list:
         if binormal is None and normal is not None:
             binormal_mode = Vector(normal)
@@ -1066,7 +1098,7 @@ def sweep(
             ]
 
     # sweep to create faces
-    new_faces = []
+    new_faces: list[Face] = []
     if edge_list:
         for sec in section_list:
             swept = Shell.sweep(sec, path_wire, transition)

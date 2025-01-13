@@ -28,9 +28,9 @@ license:
 """
 
 from __future__ import annotations
-from typing import Union
 
 from collections.abc import Iterable
+from scipy.spatial import Voronoi
 from build123d.build_enums import Mode, SortBy
 from build123d.topology import (
     Compound,
@@ -46,7 +46,6 @@ from build123d.topology import (
 from build123d.geometry import Vector, TOLERANCE
 from build123d.build_common import flatten_sequence, validate_inputs
 from build123d.build_sketch import BuildSketch
-from scipy.spatial import Voronoi
 
 
 def full_round(
@@ -77,7 +76,7 @@ def full_round(
         geometric center of the arc, and the third the radius of the arc
 
     """
-    context: BuildSketch = BuildSketch._get_context("full_round")
+    context: BuildSketch | None = BuildSketch._get_context("full_round")
 
     if not isinstance(edge, Edge):
         raise ValueError("A single Edge must be provided")
@@ -108,7 +107,11 @@ def full_round(
     # Refine the largest empty circle center estimate by averaging the best
     # three candidates.  The minimum distance between the edges and this
     # center is the circle radius.
-    best_three = [(float("inf"), None), (float("inf"), None), (float("inf"), None)]
+    best_three: list[tuple[float, int]] = [
+        (float("inf"), int()),
+        (float("inf"), int()),
+        (float("inf"), int()),
+    ]
 
     for i, v in enumerate(voronoi_vertices):
         distances = [edge_group[i].distance_to(v) for i in range(3)]
@@ -125,7 +128,9 @@ def full_round(
 
     # Extract the indices of the best three and average them
     best_indices = [x[1] for x in best_three]
-    voronoi_circle_center = sum(voronoi_vertices[i] for i in best_indices) / 3
+    voronoi_circle_center: Vector = (
+        sum((voronoi_vertices[i] for i in best_indices), Vector(0, 0, 0)) / 3.0
+    )
 
     # Determine where the connected edges intersect with the largest empty circle
     connected_edges_end_points = [
@@ -142,7 +147,7 @@ def full_round(
         for i, e in enumerate(connected_edges)
     ]
     for param in connected_edges_end_params:
-        if not (0.0 < param < 1.0):
+        if not 0.0 < param < 1.0:
             raise ValueError("Invalid geometry to create the end arc")
 
     common_vertex_points = [
@@ -177,7 +182,14 @@ def full_round(
     )
 
     # Recover other edges
-    other_edges = edge.topo_parent.edges() - topo_explore_connected_edges(edge) - [edge]
+    if edge.topo_parent is None:
+        other_edges: ShapeList[Edge] = ShapeList()
+    else:
+        other_edges = (
+            edge.topo_parent.edges()
+            - topo_explore_connected_edges(edge)
+            - ShapeList([edge])
+        )
 
     # Rebuild the face
     # Note that the longest wire must be the perimeter and others holes
@@ -195,7 +207,7 @@ def full_round(
 
 
 def make_face(
-    edges: Edge | Iterable[Edge] = None, mode: Mode = Mode.ADD
+    edges: Edge | Iterable[Edge] | None = None, mode: Mode = Mode.ADD
 ) -> Sketch:
     """Sketch Operation: make_face
 
@@ -206,7 +218,7 @@ def make_face(
             sketch pending edges.
         mode (Mode, optional): combination mode. Defaults to Mode.ADD.
     """
-    context: BuildSketch = BuildSketch._get_context("make_face")
+    context: BuildSketch | None = BuildSketch._get_context("make_face")
 
     if edges is not None:
         outer_edges = flatten_sequence(edges)
@@ -230,7 +242,7 @@ def make_face(
 
 
 def make_hull(
-    edges: Edge | Iterable[Edge] = None, mode: Mode = Mode.ADD
+    edges: Edge | Iterable[Edge] | None = None, mode: Mode = Mode.ADD
 ) -> Sketch:
     """Sketch Operation: make_hull
 
@@ -241,7 +253,7 @@ def make_hull(
             sketch pending edges.
         mode (Mode, optional): combination mode. Defaults to Mode.ADD.
     """
-    context: BuildSketch = BuildSketch._get_context("make_hull")
+    context: BuildSketch | None = BuildSketch._get_context("make_hull")
 
     if edges is not None:
         hull_edges = flatten_sequence(edges)
@@ -268,7 +280,7 @@ def make_hull(
 
 
 def trace(
-    lines: Curve | Edge | Wire | Iterable[Curve | Edge | Wire] = None,
+    lines: Curve | Edge | Wire | Iterable[Curve | Edge | Wire] | None = None,
     line_width: float = 1,
     mode: Mode = Mode.ADD,
 ) -> Sketch:
@@ -277,7 +289,7 @@ def trace(
     Convert edges, wires or pending edges into faces by sweeping a perpendicular line along them.
 
     Args:
-        lines (Union[Curve, Edge, Wire, Iterable[Union[Curve, Edge, Wire]]], optional): lines to
+        lines (Curve | Edge | Wire | Iterable[Curve | Edge | Wire]], optional): lines to
             trace. Defaults to sketch pending edges.
         line_width (float, optional): Defaults to 1.
         mode (Mode, optional): combination mode. Defaults to Mode.ADD.
@@ -288,7 +300,7 @@ def trace(
     Returns:
         Sketch: Traced lines
     """
-    context: BuildSketch = BuildSketch._get_context("trace")
+    context: BuildSketch | None = BuildSketch._get_context("trace")
 
     if lines is not None:
         trace_lines = flatten_sequence(lines)
@@ -298,7 +310,7 @@ def trace(
     else:
         raise ValueError("No objects to trace")
 
-    new_faces = []
+    new_faces: list[Face] = []
     for edge in trace_edges:
         trace_pen = edge.perpendicular_line(line_width, 0)
         new_faces.extend(Face.sweep(trace_pen, edge).faces())
@@ -306,6 +318,7 @@ def trace(
         context._add_to_context(*new_faces, mode=mode)
         context.pending_edges = ShapeList()
 
+    # pylint: disable=no-value-for-parameter
     combined_faces = Face.fuse(*new_faces) if len(new_faces) > 1 else new_faces[0]
     result = (
         Sketch(combined_faces)
