@@ -50,7 +50,7 @@ import functools
 from abc import ABC, abstractmethod
 from itertools import product
 from math import sqrt, cos, pi
-from typing import Any, overload, Type, TypeVar
+from typing import Any, cast, overload, Type, TypeVar
 
 from collections.abc import Callable, Iterable
 from typing_extensions import Self
@@ -139,7 +139,7 @@ T = TypeVar("T", Any, list[Any])
 def flatten_sequence(*obj: T) -> ShapeList[Any]:
     """Convert a sequence of object potentially containing iterables into a flat list"""
 
-    flat_list = ShapeList()
+    flat_list: ShapeList[Any] = ShapeList()
     for item in obj:
         # Note: an Iterable can't be used here as it will match with Vector & Vertex
         # and break them into a list of floats.
@@ -201,8 +201,29 @@ class Builder(ABC):
     # Abstract class variables
     _tag = "Builder"
     _obj_name = "None"
-    _shape: Shape  # The type of the shape the builder creates
-    _sub_class: Curve | Sketch | Part  # The class of the shape the builder creates
+    # _shape: Shape  # The type of the shape the builder creates
+    # _sub_class: Curve | Sketch | Part  # The class of the shape the builder creates
+
+    def __init__(
+        self,
+        *workplanes: Face | Plane | Location,
+        mode: Mode = Mode.ADD,
+    ):
+        self.mode = mode
+        planes = WorkplaneList._convert_to_planes(workplanes)
+        self.workplanes = planes if planes else [Plane.XY]
+        self._reset_tok = None
+        current_frame = inspect.currentframe()
+        assert current_frame is not None
+        assert current_frame.f_back is not None
+        self._python_frame = current_frame.f_back.f_back
+        self.parent_frame = None
+        self.builder_parent = None
+        self.lasts: dict = {Vertex: [], Edge: [], Face: [], Solid: []}
+        self.workplanes_context = None
+        self.exit_workplanes: list[Plane] = []
+        self.obj_before: Shape | None = None
+        self.to_combine: list[Shape] = []
 
     @property
     @abstractmethod
@@ -225,27 +246,6 @@ class Builder(ABC):
         """Edges that changed during last operation"""
         before_list = [] if self.obj_before is None else [self.obj_before]
         return new_edges(*(before_list + self.to_combine), combined=self._obj)
-
-    def __init__(
-        self,
-        *workplanes: Face | Plane | Location,
-        mode: Mode = Mode.ADD,
-    ):
-        self.mode = mode
-        planes = WorkplaneList._convert_to_planes(workplanes)
-        self.workplanes = planes if planes else [Plane.XY]
-        self._reset_tok = None
-        current_frame = inspect.currentframe()
-        assert current_frame is not None
-        assert current_frame.f_back is not None
-        self._python_frame = current_frame.f_back.f_back
-        self.parent_frame = None
-        self.builder_parent = None
-        self.lasts: dict = {Vertex: [], Edge: [], Face: [], Solid: []}
-        self.workplanes_context = None
-        self.exit_workplanes: list[Plane] = []
-        self.obj_before: Shape | None = None
-        self.to_combine: list[Shape] = []
 
     def __enter__(self):
         """Upon entering record the parent and a token to restore contextvars"""
@@ -316,14 +316,12 @@ class Builder(ABC):
         """Integrate a sequence of objects into existing builder object"""
         return NotImplementedError  # pragma: no cover
 
-    T = TypeVar("T", bound="Builder")
-
     @classmethod
     def _get_context(
-        cls: Type[T],
+        cls,
         caller: Builder | Shape | Joint | str | None = None,
         log: bool = True,
-    ) -> T | None:
+    ) -> Builder | None:
         """Return the instance of the current builder"""
         result = cls._current.get(None)
         context_name = "None" if result is None else type(result).__name__
@@ -374,8 +372,11 @@ class Builder(ABC):
         self.obj_before = self._obj
         self.to_combine = list(objects)
         if mode != Mode.PRIVATE and len(objects) > 0:
-            # Categorize the input objects by type
-            typed = {}
+            # Typed dictionary: keys are classes, values are lists of instances of those classes
+            typed: dict[
+                Type[Edge | Wire | Face | Solid | Compound],
+                list[Edge | Wire | Face | Solid | Compound],
+            ] = {cls: [] for cls in [Edge, Wire, Face, Solid, Compound]}
             for cls in [Edge, Wire, Face, Solid, Compound]:
                 typed[cls] = [obj for obj in objects if isinstance(obj, cls)]
 
@@ -1297,13 +1298,13 @@ class WorkplaneList:
 
     @overload
     @classmethod
-    def localize(cls, points: VectorLike) -> Vector: ...
+    def localize(cls, points: VectorLike) -> Vector: ...  # type: ignore[overload-overlap]
 
     @overload
     @classmethod
     def localize(cls, *points: VectorLike) -> list[Vector]: ...
 
-    @classmethod
+    @classmethod  # type: ignore[misc]
     def localize(cls, *points: VectorLike):
         """Localize a sequence of points to the active workplane
         (only used by BuildLine where there is only one active workplane)
