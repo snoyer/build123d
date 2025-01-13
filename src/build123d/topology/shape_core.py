@@ -167,7 +167,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from .composite import Compound  # pylint: disable=R0801
     from build123d.build_part import BuildPart  # pylint: disable=R0801
 
-HASH_CODE_MAX = 2147483647
 Shapes = Literal["Vertex", "Edge", "Wire", "Face", "Shell", "Solid", "Compound"]
 TrimmingTool = Union[Plane, "Shell", "Face"]
 TOPODS = TypeVar("TOPODS", bound=TopoDS_Shape)
@@ -805,8 +804,10 @@ class Shape(NodeMixin, Generic[TOPODS]):
         return NotImplemented
 
     def __hash__(self) -> int:
-        """Return has code"""
-        return self.hash_code()
+        """Return hash code"""
+        if self.wrapped is None:
+            return 0
+        return hash(self.wrapped)
 
     def __rmul__(self, other):
         """right multiply for positioning operator *"""
@@ -1180,19 +1181,6 @@ class Shape(NodeMixin, Generic[TOPODS]):
         return ShapeList(
             self.__class__.cast(s) for s in get_top_level_topods_shapes(self.wrapped)
         )
-
-    def hash_code(self) -> int:
-        """Returns a hashed value denoting this shape. It is computed from the
-        TShape and the Location. The Orientation is not used.
-
-        Args:
-
-        Returns:
-
-        """
-        if self.wrapped is None:
-            return 0
-        return self.wrapped.HashCode(HASH_CODE_MAX)
 
     def intersect(
         self, *to_intersect: Shape | Axis | Plane
@@ -2852,7 +2840,7 @@ def _topods_entities(shape: TopoDS_Shape, topo_type: Shapes) -> list[TopoDS_Shap
 
     while explorer.More():
         item = explorer.Current()
-        out[item.HashCode(HASH_CODE_MAX)] = (
+        out[hash(item)] = (
             item  # needed to avoid pseudo-duplicate entities
         )
         explorer.Next()
