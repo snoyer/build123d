@@ -576,7 +576,7 @@ class Mixin3D(Shape):
 
         return offset_solid
 
-    def solid(self) -> Solid:
+    def solid(self) -> Solid | None:
         """Return the Solid"""
         return Shape.get_single_shape(self, "Solid")
 
@@ -1043,9 +1043,7 @@ class Solid(Mixin3D, Shape[TopoDS_Solid]):
         )
 
     @classmethod
-    def make_loft(
-        cls, objs: Iterable[Vertex | Wire], ruled: bool = False
-    ) -> Solid:
+    def make_loft(cls, objs: Iterable[Vertex | Wire], ruled: bool = False) -> Solid:
         """make loft
 
         Makes a loft from a list of wires and vertices. Vertices can appear only at the

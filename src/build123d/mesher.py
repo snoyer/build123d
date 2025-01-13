@@ -86,10 +86,10 @@ import ctypes
 import math
 import os
 import sys
-import uuid
 import warnings
 from os import PathLike, fsdecode
 from typing import Union
+from uuid import UUID
 
 from collections.abc import Iterable
 
@@ -295,6 +295,8 @@ class Mesher:
                 ocp_mesh_vertices.append(pnt)
 
             # Store the triangles from the triangulated faces
+            if facet.wrapped is None:
+                continue
             facet_reversed = facet.wrapped.Orientation() == ta.TopAbs_REVERSED
             order = [1, 3, 2] if facet_reversed else [1, 2, 3]
             for tri in poly_triangulation.Triangles():
@@ -305,7 +307,7 @@ class Mesher:
     @staticmethod
     def _create_3mf_mesh(
         ocp_mesh_vertices: list[tuple[float, float, float]],
-        triangles: list[list[int, int, int]],
+        triangles: list[list[int]],
     ):
         # Round off the vertices to avoid vertices within tolerance being
         # considered as different vertices
@@ -337,7 +339,7 @@ class Mesher:
             # Remove degenerate triangles
             if len(set(mapped_indices)) != 3:
                 continue
-            c_array = (ctypes.c_uint * 3)(*mapped_indices)
+            c_array = (ctypes.c_uint * 3)(*mapped_indices)  # type: ignore[assignment]
             triangles_3mf.append(Lib3MF.Triangle(c_array))
 
         return (vertices_3mf, triangles_3mf)
@@ -360,8 +362,8 @@ class Mesher:
         linear_deflection: float = 0.001,
         angular_deflection: float = 0.1,
         mesh_type: MeshType = MeshType.MODEL,
-        part_number: str = None,
-        uuid_value: uuid = None,
+        part_number: str | None = None,
+        uuid_value: UUID | None = None,
     ):
         """add_shape
 
@@ -507,7 +509,6 @@ class Mesher:
 
         # Extract 3MF meshes and translate to OCP meshes
         mesh_iterator: Lib3MF.MeshObjectIterator = self.model.GetMeshObjects()
-        self.meshes: list[Lib3MF.MeshObject]
         for _i in range(mesh_iterator.Count()):
             mesh_iterator.MoveNext()
             self.meshes.append(mesh_iterator.GetCurrentMeshObject())

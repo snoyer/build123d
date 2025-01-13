@@ -63,14 +63,27 @@ class BuildSketch(Builder):
     _shape = Face  # Type of shapes being constructed
     _sub_class = Sketch  # Class of sketch/_obj
 
-    @property
-    def _obj(self) -> Sketch:
-        """The builder's object"""
-        return self.sketch_local
+    def __init__(
+        self,
+        *workplanes: Face | Plane | Location,
+        mode: Mode = Mode.ADD,
+    ):
+        self.mode = mode
+        self._sketch_local: Sketch | None = None
+        self.pending_edges: ShapeList[Edge] = ShapeList()
+        super().__init__(*workplanes, mode=mode)
 
-    @_obj.setter
-    def _obj(self, value: Sketch) -> None:
-        self.sketch_local = value
+    @property
+    def sketch_local(self) -> Sketch | None:
+        """Get the builder's object"""
+        return self._sketch_local
+
+    @sketch_local.setter
+    def sketch_local(self, value: Sketch) -> None:
+        """Set the builder's object"""
+        self._sketch_local = value
+
+    _obj = sketch_local  # Alias _obj to sketch_local
 
     @property
     def sketch(self):
@@ -85,16 +98,6 @@ class BuildSketch(Builder):
             global_objs.append(plane.from_local_coords(self._obj))
         return Sketch(Compound(global_objs).wrapped)
 
-    def __init__(
-        self,
-        *workplanes: Face | Plane | Location,
-        mode: Mode = Mode.ADD,
-    ):
-        self.mode = mode
-        self.sketch_local: Sketch = None
-        self.pending_edges: ShapeList[Edge] = ShapeList()
-        super().__init__(*workplanes, mode=mode)
-
     def solids(self, *args):
         """solids() not implemented"""
         raise NotImplementedError("solids() doesn't apply to BuildSketch")
@@ -108,7 +111,7 @@ class BuildSketch(Builder):
         wires = Wire.combine(self.pending_edges)
         return wires if len(wires) > 1 else wires[0]
 
-    def _add_to_pending(self, *objects: Edge, face_plane: Plane = None):
+    def _add_to_pending(self, *objects: Edge, face_plane: Plane | None = None):
         """Integrate a sequence of objects into existing builder object"""
         if face_plane:
             raise NotImplementedError("face_plane arg not supported for this method")

@@ -187,7 +187,7 @@ class Mixin2D(Shape):
 
         return new_surface
 
-    def face(self) -> Face:
+    def face(self) -> Face | None:
         """Return the Face"""
         return Shape.get_single_shape(self, "Face")
 
@@ -246,7 +246,7 @@ class Mixin2D(Shape):
         """Return a copy of self moved along the normal by amount"""
         return copy.deepcopy(self).moved(Location(self.normal_at() * amount))
 
-    def shell(self) -> Shell:
+    def shell(self) -> Shell | None:
         """Return the Shell"""
         return Shape.get_single_shape(self, "Shell")
 
@@ -1191,10 +1191,15 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
                     intersected_shapes.append(Shell(topods_shell))
 
         intersected_shapes = intersected_shapes.sort_by(Axis(self.center(), direction))
-        intersected_shapes = ShapeList(
-            s.face() if len(s.faces()) == 1 else s for s in intersected_shapes
-        )
-        return intersected_shapes
+        projected_shapes: ShapeList[Face | Shell] = ShapeList()
+        for shape in intersected_shapes:
+            if len(shape.faces()) == 1:
+                shape_face = shape.face()
+                if shape_face is not None:
+                    projected_shapes.append(shape_face)
+            else:
+                projected_shapes.append(shape)
+        return projected_shapes
 
     def to_arcs(self, tolerance: float = 1e-3) -> Face:
         """to_arcs
@@ -1306,9 +1311,7 @@ class Shell(Mixin2D, Shape[TopoDS_Shell]):
         return Shell(TopoDS.Shell_s(_extrude_topods_shape(obj.wrapped, direction)))
 
     @classmethod
-    def make_loft(
-        cls, objs: Iterable[Vertex | Wire], ruled: bool = False
-    ) -> Shell:
+    def make_loft(cls, objs: Iterable[Vertex | Wire], ruled: bool = False) -> Shell:
         """make loft
 
         Makes a loft from a list of wires and vertices. Vertices can appear only at the

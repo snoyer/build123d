@@ -54,7 +54,7 @@ license:
 from __future__ import annotations
 
 from math import radians, sin, cos, isclose
-from typing import Any, Union, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from collections.abc import Iterable
 
@@ -91,9 +91,6 @@ from .shape_core import Shape, ShapeList, downcast, shapetype, unwrap_topods_com
 if TYPE_CHECKING:  # pragma: no cover
     from .zero_d import Vertex  # pylint: disable=R0801
     from .one_d import Edge, Wire  # pylint: disable=R0801
-    from .two_d import Face, Shell  # pylint: disable=R0801
-    from .three_d import Solid  # pylint: disable=R0801
-    from .composite import Compound, Curve, Sketch, Part  # pylint: disable=R0801
 
 
 def _extrude_topods_shape(obj: TopoDS_Shape, direction: VectorLike) -> TopoDS_Shape:

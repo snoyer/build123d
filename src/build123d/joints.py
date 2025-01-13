@@ -84,7 +84,7 @@ class RigidJoint(Joint):
         to_part: Solid | Compound | None = None,
         joint_location: Location | None = None,
     ):
-        context: BuildPart = BuildPart._get_context(self)
+        context: BuildPart | None = BuildPart._get_context(self)
         validate_inputs(context, self)
         if to_part is None:
             if context is not None:
@@ -97,6 +97,8 @@ class RigidJoint(Joint):
         if joint_location is None:
             joint_location = Location()
 
+        if part_or_builder.location is None:
+            raise ValueError("Part must have a location")
         self.relative_location = part_or_builder.location.inverse() * joint_location
         part_or_builder.joints[label] = self
         super().__init__(label, part_or_builder)
@@ -269,7 +271,7 @@ class RevoluteJoint(Joint):
         angle_reference: VectorLike | None = None,
         angular_range: tuple[float, float] = (0, 360),
     ):
-        context: BuildPart = BuildPart._get_context(self)
+        context: BuildPart | None = BuildPart._get_context(self)
         validate_inputs(context, self)
         if to_part is None:
             if context is not None:
@@ -287,6 +289,8 @@ class RevoluteJoint(Joint):
         else:
             self.angle_reference = Plane(origin=(0, 0, 0), z_dir=axis.direction).x_dir
         self._angle: float | None = None
+        if part_or_builder.location is None:
+            raise ValueError("Part must have a location")
         self.relative_axis = axis.located(part_or_builder.location.inverse())
         part_or_builder.joints[label] = self
         super().__init__(label, part_or_builder)
@@ -384,7 +388,7 @@ class LinearJoint(Joint):
         axis: Axis = Axis.Z,
         linear_range: tuple[float, float] = (0, inf),
     ):
-        context: BuildPart = BuildPart._get_context(self)
+        context: BuildPart | None = BuildPart._get_context(self)
         validate_inputs(context, self)
         if to_part is None:
             if context is not None:
@@ -396,6 +400,8 @@ class LinearJoint(Joint):
         self.axis = axis
         self.linear_range = linear_range
         self.position = None
+        if part_or_builder.location is None:
+            raise ValueError("Part must have a location")
         self.relative_axis = axis.located(part_or_builder.location.inverse())
         self.angle = None
         part_or_builder.joints[label] = self
@@ -571,7 +577,7 @@ class CylindricalJoint(Joint):
         linear_range: tuple[float, float] = (0, inf),
         angular_range: tuple[float, float] = (0, 360),
     ):
-        context: BuildPart = BuildPart._get_context(self)
+        context: BuildPart | None = BuildPart._get_context(self)
         validate_inputs(context, self)
         if to_part is None:
             if context is not None:
@@ -591,6 +597,8 @@ class CylindricalJoint(Joint):
             self.angle_reference = Plane(origin=(0, 0, 0), z_dir=axis.direction).x_dir
         self.angular_range = angular_range
         self.linear_range = linear_range
+        if part_or_builder.location is None:
+            raise ValueError("Part must have a location")
         self.relative_axis = axis.located(part_or_builder.location.inverse())
         self.position: float | None = None
         self.angle: float | None = None
@@ -733,7 +741,7 @@ class BallJoint(Joint):
         ] = ((0, 360), (0, 360), (0, 360)),
         angle_reference: Plane = Plane.XY,
     ):
-        context: BuildPart = BuildPart._get_context(self)
+        context: BuildPart | None = BuildPart._get_context(self)
         validate_inputs(context, self)
         if to_part is None:
             if context is not None:
@@ -745,6 +753,8 @@ class BallJoint(Joint):
         if joint_location is None:
             joint_location = Location()
 
+        if part_or_builder.location is None:
+            raise ValueError("Part must have a location")
         self.relative_location = part_or_builder.location.inverse() * joint_location
         part_or_builder.joints[label] = self
         self.angular_range = angular_range

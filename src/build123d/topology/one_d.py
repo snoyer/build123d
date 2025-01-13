@@ -437,7 +437,7 @@ class Mixin1D(Shape):
 
         return result
 
-    def edge(self) -> Edge:
+    def edge(self) -> Edge | None:
         """Return the Edge"""
         return Shape.get_single_shape(self, "Edge")
 
@@ -1086,7 +1086,7 @@ class Mixin1D(Shape):
 
         return Vector(gp_Dir(res))
 
-    def vertex(self) -> Vertex:
+    def vertex(self) -> Vertex | None:
         """Return the Vertex"""
         return Shape.get_single_shape(self, "Vertex")
 
@@ -1094,7 +1094,7 @@ class Mixin1D(Shape):
         """vertices - all the vertices in this Shape"""
         return Shape.get_shape_list(self, "Vertex")
 
-    def wire(self) -> Wire:
+    def wire(self) -> Wire | None:
         """Return the Wire"""
         return Shape.get_single_shape(self, "Wire")
 

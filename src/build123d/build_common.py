@@ -174,6 +174,9 @@ operations_apply_to = {
     "thicken": ["BuildPart"],
 }
 
+B = TypeVar("B", bound="Builder")
+"""Builder type hint"""
+
 
 class Builder(ABC):
     """Builder
@@ -318,10 +321,10 @@ class Builder(ABC):
 
     @classmethod
     def _get_context(
-        cls,
+        cls: Type[B],
         caller: Builder | Shape | Joint | str | None = None,
         log: bool = True,
-    ) -> Builder | None:
+    ) -> B | None:
         """Return the instance of the current builder"""
         result = cls._current.get(None)
         context_name = "None" if result is None else type(result).__name__
@@ -335,7 +338,7 @@ class Builder(ABC):
                 caller_name = "None"
             logger.info("%s context requested by %s", context_name, caller_name)
 
-        return result
+        return cast(B, result)
 
     def _add_to_context(
         self,

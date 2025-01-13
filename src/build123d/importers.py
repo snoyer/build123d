@@ -108,10 +108,11 @@ def import_brep(file_name: PathLike | str | bytes) -> Shape:
     shape = TopoDS_Shape()
     builder = BRep_Builder()
 
-    BRepTools.Read_s(shape, fsdecode(file_name), builder)
+    file_name_str = fsdecode(file_name)
+    BRepTools.Read_s(shape, file_name_str, builder)
 
     if shape.IsNull():
-        raise ValueError(f"Could not import {file_name}")
+        raise ValueError(f"Could not import {file_name_str}")
 
     return Compound.cast(shape)
 
@@ -219,7 +220,6 @@ def import_step(filename: PathLike | str | bytes) -> Compound:
     reader.Transfer(doc)
 
     root = Compound()
-    root.for_construction = None
     root.children = build_assembly()
     # Remove empty Compound wrapper if single free object
     if len(root.children) == 1:

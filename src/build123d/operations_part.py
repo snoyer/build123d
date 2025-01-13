@@ -164,6 +164,8 @@ def extrude(
                     target_object = context.part
                 else:
                     target_object = target
+                if target_object is None:
+                    raise ValueError("No target object provided")
 
                 new_solids.append(
                     Solid.extrude_until(
@@ -509,7 +511,7 @@ def section(
 
     if obj is not None:
         to_section = obj
-    elif context is not None:
+    elif context is not None and context.part is not None:
         to_section = context.part
     else:
         raise ValueError("No object to section")
