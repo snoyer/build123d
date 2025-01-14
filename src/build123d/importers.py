@@ -31,10 +31,12 @@ license:
 
 import os
 from os import PathLike, fsdecode
+import re
 import unicodedata
 from math import degrees
 from pathlib import Path
-from typing import Optional, TextIO, Union
+from typing import Literal, Optional, TextIO, Union
+import warnings
 
 from OCP.BRep import BRep_Builder
 from OCP.BRepGProp import BRepGProp
@@ -336,8 +338,8 @@ def import_svg(
     *,
     flip_y: bool = True,
     ignore_visibility: bool = False,
-    label_by: str = "id",
-    is_inkscape_label: bool = False,
+    label_by: Literal["id", "class", "inkscape:label"] | str = "id",
+    is_inkscape_label: bool | None = None,  # TODO remove for `1.0` release
 ) -> ShapeList[Wire | Face]:
     """import_svg
 
@@ -345,10 +347,9 @@ def import_svg(
         svg_file (Union[str, Path, TextIO]): svg file
         flip_y (bool, optional): flip objects to compensate for svg orientation. Defaults to True.
         ignore_visibility (bool, optional): Defaults to False.
-        label_by (str, optional): xml attribute. Defaults to "id".
-        is_inkscape_label (bool, optional): flag to indicate that the attribute
-            is an Inkscape label like `inkscape:label` - label_by would be set to
-            `label` in this case. Defaults to False.
+        label_by (str, optional): XML attribute to use for imported shapes' `label` property.
+            Defaults to "id".
+            Use `inkscape:label` to read labels set from Inkscape's "Layers and Objects" panel.
 
     Raises:
         ValueError: unexpected shape type
@@ -356,11 +357,16 @@ def import_svg(
     Returns:
         ShapeList[Union[Wire, Face]]: objects contained in svg
     """
+    if is_inkscape_label is not None:  # TODO remove for `1.0` release
+        msg = "`is_inkscape_label` parameter is deprecated"
+        if is_inkscape_label:
+            label_by = "inkscape:" + label_by
+            msg += f", use `label_by={label_by!r}` instead"
+        warnings.warn(msg, stacklevel=2)
+
     shapes = []
-    label_by = (
-        "{http://www.inkscape.org/namespaces/inkscape}" + label_by
-        if is_inkscape_label
-        else label_by
+    label_by = re.sub(
+        r"^inkscape:(.+)", r"{http://www.inkscape.org/namespaces/inkscape}\1", label_by
     )
     for face_or_wire, color_and_label in import_svg_document(
         svg_file,

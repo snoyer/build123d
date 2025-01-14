@@ -71,13 +71,9 @@ class ImportSVG(unittest.TestCase):
 
     def test_import_svg(self):
         svg_file = Path(__file__).parent / "../tests/svg_import_test.svg"
-        for tag in ["id", "label"]:
+        for tag in ["id", "inkscape:label"]:
             # Import the svg object as a ShapeList
-            svg = import_svg(
-                svg_file,
-                label_by=tag,
-                is_inkscape_label=tag == "label",
-            )
+            svg = import_svg(svg_file, label_by=tag)
 
             # Exact the shape of the plate & holes
             base_faces = svg.filter_by(lambda f: "base" in f.label)
@@ -87,6 +83,24 @@ class ImportSVG(unittest.TestCase):
             self.assertEqual(len(list(base_faces)), 1)
             self.assertEqual(len(list(hole_faces)), 2)
             self.assertEqual(len(list(test_wires)), 1)
+
+    def test_import_svg_deprecated_param(self):  # TODO remove for `1.0` release
+        svg_file = Path(__file__).parent / "../tests/svg_import_test.svg"
+
+        with self.assertWarns(UserWarning):
+            svg = import_svg(svg_file, label_by="label", is_inkscape_label=True)
+
+            # Exact the shape of the plate & holes
+            base_faces = svg.filter_by(lambda f: "base" in f.label)
+            hole_faces = svg.filter_by(lambda f: "hole" in f.label)
+            test_wires = svg.filter_by(lambda f: "wire" in f.label)
+
+            self.assertEqual(len(list(base_faces)), 1)
+            self.assertEqual(len(list(hole_faces)), 2)
+            self.assertEqual(len(list(test_wires)), 1)
+
+        with self.assertWarns(UserWarning):
+            svg = import_svg(svg_file, is_inkscape_label=False)
 
     def test_import_svg_colors(self):
         svg_file = StringIO(
