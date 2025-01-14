@@ -30,7 +30,7 @@ The recommended method for most users is to install **build123d** is:
 pip install build123d
 ```
 
-To get the latest non-released version of **build123d*** one can install from GitHub using one of the following two commands:
+To get the latest non-released version of **build123d** one can install from GitHub using one of the following two commands:
 
 In Linux/MacOS, use the following command:
 ```
