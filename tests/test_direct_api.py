@@ -690,39 +690,38 @@ class TestCadObjects(DirectApiTestCase):
         self.assertAlmostEqual(many_rad.radius, 1.0)
 
 
-# TODO: Enable after the split of topology.py
-# class TestCleanMethod(unittest.TestCase):
-#     def setUp(self):
-#         # Create a mock object
-#         self.solid = Solid()
-#         self.solid.wrapped = MagicMock()  # Simulate a valid `wrapped` object
+class TestCleanMethod(unittest.TestCase):
+    def setUp(self):
+        # Create a mock object
+        self.solid = Solid()
+        self.solid.wrapped = MagicMock()  # Simulate a valid `wrapped` object
 
-#     @patch("build123d.topology.shape_core.ShapeUpgrade_UnifySameDomain")
-#     def test_clean_warning_on_exception(self, mock_shape_upgrade):
-#         # Mock the upgrader
-#         mock_upgrader = mock_shape_upgrade.return_value
-#         mock_upgrader.Build.side_effect = Exception("Mocked Build failure")
+    @patch("build123d.topology.shape_core.ShapeUpgrade_UnifySameDomain")
+    def test_clean_warning_on_exception(self, mock_shape_upgrade):
+        # Mock the upgrader
+        mock_upgrader = mock_shape_upgrade.return_value
+        mock_upgrader.Build.side_effect = Exception("Mocked Build failure")
 
-#         # Capture warnings
-#         with self.assertWarns(Warning) as warn_context:
-#             self.solid.clean()
+        # Capture warnings
+        with self.assertWarns(Warning) as warn_context:
+            self.solid.clean()
 
-#         # Assert the warning message
-#         self.assertIn("Unable to clean", str(warn_context.warning))
+        # Assert the warning message
+        self.assertIn("Unable to clean", str(warn_context.warning))
 
-#         # Verify the upgrader was constructed with the correct arguments
-#         mock_shape_upgrade.assert_called_once_with(self.solid.wrapped, True, True, True)
+        # Verify the upgrader was constructed with the correct arguments
+        mock_shape_upgrade.assert_called_once_with(self.solid.wrapped, True, True, True)
 
-#         # Verify the Build method was called
-#         mock_upgrader.Build.assert_called_once()
+        # Verify the Build method was called
+        mock_upgrader.Build.assert_called_once()
 
-#     def test_clean_with_none_wrapped(self):
-#         # Set `wrapped` to None to simulate the error condition
-#         self.solid.wrapped = None
+    def test_clean_with_none_wrapped(self):
+        # Set `wrapped` to None to simulate the error condition
+        self.solid.wrapped = None
 
-#         # Call clean and ensure it returns self
-#         result = self.solid.clean()
-#         self.assertIs(result, self.solid)  # Ensure it returns the same object
+        # Call clean and ensure it returns self
+        result = self.solid.clean()
+        self.assertIs(result, self.solid)  # Ensure it returns the same object
 
 
 class TestColor(DirectApiTestCase):
@@ -3793,34 +3792,33 @@ class TestShapeList(DirectApiTestCase):
     def test_group_by_str_repr(self):
         nonagon = RegularPolygon(5, 9)
 
-        # TODO: re-enable this test once the topology refactor complete
-        # expected = [
-        #     "[[<build123d.topology.one_d.Edge at 0x1277f6e1cd0>],",
-        #     " [<build123d.topology.one_d.Edge at 0x1277f6e1c10>,",
-        #     "  <build123d.topology.one_d.Edge at 0x1277fd8a090>],",
-        #     " [<build123d.topology.one_d.Edge at 0x1277f75d690>,",
-        #     "  <build123d.topology.one_d.Edge at 0x127760d9310>],",
-        #     " [<build123d.topology.one_d.Edge at 0x12777261f90>,",
-        #     "  <build123d.topology.one_d.Edge at 0x1277f6bd2d0>],",
-        #     " [<build123d.topology.one_d.Edge at 0x1276fbb0590>,",
-        #     "  <build123d.topology.one_d.Edge at 0x1277fec6d90>]]",
-        # ]
-        # self.assertDunderStrEqual(str(nonagon.edges().group_by(Axis.X)), expected)
+        expected = [
+            "[[<build123d.topology.one_d.Edge at 0x1277f6e1cd0>],",
+            " [<build123d.topology.one_d.Edge at 0x1277f6e1c10>,",
+            "  <build123d.topology.one_d.Edge at 0x1277fd8a090>],",
+            " [<build123d.topology.one_d.Edge at 0x1277f75d690>,",
+            "  <build123d.topology.one_d.Edge at 0x127760d9310>],",
+            " [<build123d.topology.one_d.Edge at 0x12777261f90>,",
+            "  <build123d.topology.one_d.Edge at 0x1277f6bd2d0>],",
+            " [<build123d.topology.one_d.Edge at 0x1276fbb0590>,",
+            "  <build123d.topology.one_d.Edge at 0x1277fec6d90>]]",
+        ]
+        self.assertDunderStrEqual(str(nonagon.edges().group_by(Axis.X)), expected)
 
-        # expected_repr = (
-        #     "[[<build123d.topology.one_d.Edge object at 0x000001277FEC6D90>],"
-        #     " [<build123d.topology.one_d.Edge object at 0x000001277F6BCC10>,"
-        #     " <build123d.topology.one_d.Edge object at 0x000001277EC3D5D0>],"
-        #     " [<build123d.topology.one_d.Edge object at 0x000001277F6BEA90>,"
-        #     " <build123d.topology.one_d.Edge object at 0x000001276FCB2310>],"
-        #     " [<build123d.topology.one_d.Edge object at 0x000001277F6D10D0>,"
-        #     " <build123d.topology.one_d.Edge object at 0x000001276FBAAD10>],"
-        #     " [<build123d.topology.one_d.Edge object at 0x000001277FC86F90>,"
-        #     " <build123d.topology.one_d.Edge object at 0x000001277F6E1CD0>]]"
-        # )
-        # self.assertDunderReprEqual(
-        #     repr(nonagon.edges().group_by(Axis.X)), expected_repr
-        # )
+        expected_repr = (
+            "[[<build123d.topology.one_d.Edge object at 0x000001277FEC6D90>],"
+            " [<build123d.topology.one_d.Edge object at 0x000001277F6BCC10>,"
+            " <build123d.topology.one_d.Edge object at 0x000001277EC3D5D0>],"
+            " [<build123d.topology.one_d.Edge object at 0x000001277F6BEA90>,"
+            " <build123d.topology.one_d.Edge object at 0x000001276FCB2310>],"
+            " [<build123d.topology.one_d.Edge object at 0x000001277F6D10D0>,"
+            " <build123d.topology.one_d.Edge object at 0x000001276FBAAD10>],"
+            " [<build123d.topology.one_d.Edge object at 0x000001277FC86F90>,"
+            " <build123d.topology.one_d.Edge object at 0x000001277F6E1CD0>]]"
+        )
+        self.assertDunderReprEqual(
+            repr(nonagon.edges().group_by(Axis.X)), expected_repr
+        )
 
         f = io.StringIO()
         p = pretty.PrettyPrinter(f)
