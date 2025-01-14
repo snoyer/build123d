@@ -35,7 +35,7 @@ import re
 import unicodedata
 from math import degrees
 from pathlib import Path
-from typing import Optional, TextIO, Union
+from typing import Literal, Optional, TextIO, Union
 import warnings
 
 from OCP.BRep import BRep_Builder
@@ -338,7 +338,7 @@ def import_svg(
     *,
     flip_y: bool = True,
     ignore_visibility: bool = False,
-    label_by: str = "id",
+    label_by: Literal["id", "class", "inkscape:label"] | str = "id",
     is_inkscape_label: bool | None = None,  # TODO remove for `1.0` release
 ) -> ShapeList[Wire | Face]:
     """import_svg
