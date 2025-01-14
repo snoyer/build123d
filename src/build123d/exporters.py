@@ -881,26 +881,64 @@ class ExportSVG(Export2D):
             line_type: LineType,
         ):
             def convert_color(
-                input_color: ColorIndex | RGB | Color | None,
+                input_color: ColorIndex | RGB | Color | tuple | None,
             ) -> Color | None:
-                if isinstance(input_color, ColorIndex):
-                    # The easydxf color indices BLACK and WHITE have the same
-                    # value (7), and are both mapped to (255,255,255) by the
-                    # aci2rgb() function.  We prefer (0,0,0).
-                    if input_color == ColorIndex.BLACK:
-                        rgb_color = RGB(0, 0, 0)
-                    else:
-                        rgb_color = aci2rgb(input_color.value)
-                elif isinstance(input_color, tuple):
-                    rgb_color = RGB(*input_color)
-                else:
-                    rgb_color = input_color  # If not ColorIndex or tuple, it's already RGB or None
+                """
+                Convert various color representations into a `Color` object.
 
-                if isinstance(rgb_color, RGB):
-                    red, green, blue = rgb_color.to_floats()
-                    final_color = Color(red, green, blue, 1.0)
-                else:
-                    final_color = rgb_color  # If not RGB, it's None or already a Color
+                This function takes an input color, which can be of type `ColorIndex`, `RGB`,
+                `Color`, `tuple`, or `None`, and converts it into a `Color` object. If the input
+                is `None`, the function returns `None`. It handles specific cases for `ColorIndex.BLACK`
+                and other `ColorIndex` values using the `aci2rgb` function.
+
+                Args:
+                    input_color (ColorIndex | RGB | Color | tuple | None): The input color to be converted.
+                        - `ColorIndex`: A predefined color index from `easydxf`. Special handling for
+                        `ColorIndex.BLACK` ensures it maps to `RGB(0, 0, 0)` instead of the default
+                        `aci2rgb` mapping to `RGB(255, 255, 255)`.
+                        - `RGB`: A direct representation of red, green, and blue components.
+                        - `Color`: An existing `Color` object.
+                        - `tuple`: A tuple of RGB values (e.g., `(255, 0, 0)` for red).
+                        - `None`: Represents no color.
+
+                Returns:
+                    Color | None: The converted `Color` object or `None` if the input was `None`.
+
+                Raises:
+                    ValueError: If the input color type is unsupported.
+
+                Notes:
+                    - The `easydxf` color indices BLACK and WHITE have the same value (7), and both
+                    are mapped to `(255, 255, 255)` by the `aci2rgb()` function. This implementation
+                    overrides the default mapping to prefer `(0, 0, 0)` for `ColorIndex.BLACK`.
+                """
+                final_color: Color | None
+                match input_color:
+                    case ColorIndex.BLACK:
+                        # Map BLACK explicitly to RGB(0, 0, 0)
+                        final_color = Color(0.0, 0.0, 0.0, 1.0)
+                    case ColorIndex() as color_index:
+                        # Convert other ColorIndex values using aci2rgb
+                        rgb_color = aci2rgb(color_index.value)
+                        red, green, blue = rgb_color.to_floats()
+                        final_color = Color(red, green, blue, 1.0)
+                    case tuple() as color_tuple:
+                        # Convert tuple directly to Color
+                        rgb_color = RGB(*color_tuple)
+                        red, green, blue = rgb_color.to_floats()
+                        final_color = Color(red, green, blue, 1.0)
+                    case RGB() as rgb:
+                        # Convert RGB directly to Color
+                        red, green, blue = rgb.to_floats()
+                        final_color = Color(red, green, blue, 1.0)
+                    case Color() as color:
+                        # Already a Color
+                        final_color = color
+                    case None:
+                        # If None, return None
+                        final_color = None
+                    case _:
+                        raise ValueError(f"Unsupported input type: {type(input_color)}")
 
                 return final_color
 
