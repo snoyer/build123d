@@ -1110,6 +1110,8 @@ class ExportSVG(Export2D):
 
     @staticmethod
     def _wire_edges(wire: Wire, reverse: bool) -> list[Edge]:
+        # Note that BRepTools_WireExplorer can return edges in a different order
+        # than the standard edges() method.
         edges = []
         explorer = BRepTools_WireExplorer(wire.wrapped)
         while explorer.More():
@@ -1117,8 +1119,8 @@ class ExportSVG(Export2D):
             edges.append(Edge(topo_edge))
             explorer.Next()
         # edges = wire.edges()
-        # if reverse:
-        #     edges.reverse()
+        if reverse:
+            edges.reverse()
         return edges
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
