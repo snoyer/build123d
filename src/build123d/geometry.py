@@ -131,7 +131,8 @@ class Vector:
         x (float): x component
         y (float): y component
         z (float): z component
-        vec (Vector |  Sequence(float) |  gp_Vec |  gp_Pnt |  gp_Dir |  gp_XYZ): vector representations
+        vec (Vector |  Sequence(float) |  gp_Vec |  gp_Pnt |  gp_Dir |  gp_XYZ): vector
+            representations
 
     Note that if no z value is provided it's assumed to be zero. If no values are provided
     the returned Vector has the value of 0, 0, 0.
@@ -477,7 +478,8 @@ class Vector:
             Vector: transformed vector
         """
         if not is_direction:
-            # to gp_Pnt to obey build123d transformation convention (in OCP.vectors do not translate)
+            # to gp_Pnt to obey build123d transformation convention (in OCP.vectors do not
+            # translate)
             pnt = self.to_pnt()
             pnt_t = pnt.Transformed(affine_transform.wrapped.Trsf())
             return_value = Vector(gp_Vec(pnt_t.XYZ()))
@@ -524,16 +526,16 @@ class Vector:
         if axis is not None:
             return axis.intersect(self)
 
-        elif plane is not None:
+        if plane is not None:
             return plane.intersect(self)
 
-        elif vector is not None and self == vector:
+        if vector is not None and self == vector:
             return vector
 
-        elif location is not None:
+        if location is not None:
             return location.intersect(self)
 
-        elif shape is not None:
+        if shape is not None:
             return shape.intersect(self)
 
 
@@ -1637,16 +1639,16 @@ class Location:
         if axis is not None:
             return axis.intersect(self)
 
-        elif plane is not None:
+        if plane is not None:
             return plane.intersect(self)
 
-        elif vector is not None and self.position == vector:
+        if vector is not None and self.position == vector:
             return vector
 
-        elif location is not None and self == location:
+        if location is not None and self == location:
             return self
 
-        elif shape is not None:
+        if shape is not None:
             return shape.intersect(self)
 
 
@@ -1700,7 +1702,8 @@ class Rotation(Location):
         X (float): rotation in degrees about X axis
         Y (float): rotation in degrees about Y axis
         Z (float): rotation in degrees about Z axis
-        optionally specify rotation ordering with Intrinsic or Extrinsic enums, defaults to Intrinsic.XYZ
+        optionally specify rotation ordering with Intrinsic or Extrinsic enums,
+            defaults to Intrinsic.XYZ
 
     """
 
@@ -1781,29 +1784,30 @@ class Pos(Location):
         """Position by X, Y, Z"""
 
     def __init__(self, *args, **kwargs):
-        position = [0, 0, 0]
-        # VectorLike
-        if len(args) == 1 and isinstance(args[0], (tuple, Vector)):
-            position = list(args[0])
-        # Vertex
-        elif len(args) == 1 and isinstance(args[0], Iterable):
-            position = list(args[0])
-        # Values
-        elif 1 <= len(args) <= 3 and all([isinstance(v, (float, int)) for v in args]):
-            position = list(args) + [0] * (3 - len(args))
+        x, y, z, v = 0, 0, 0, None
 
-        unknown_args = ", ".join(set(kwargs.keys()).difference(["v", "X", "Y", "Z"]))
-        if unknown_args:
-            raise ValueError(f"Unexpected argument(s) {unknown_args}")
+        # Handle args
+        if args:
+            if all(isinstance(v, (float, int)) for v in args):
+                x, y, z = Vector(args)
+            elif len(args) == 1:
+                x, y, z = Vector(args[0])
+            else:
+                raise TypeError(f"Invalid inputs to Pos {args}")
 
-        if "X" in kwargs:
-            position[0] = kwargs["X"]
-        if "Y" in kwargs:
-            position[1] = kwargs["Y"]
-        if "Z" in kwargs:
-            position[2] = kwargs["Z"]
+        # Handle kwargs
+        x = kwargs.pop("X", x)
+        y = kwargs.pop("Y", y)
+        z = kwargs.pop("Z", z)
+        v = kwargs.pop("v", Vector(x, y, z))
 
-        super().__init__(tuple(position))
+        # Handle unexpected kwargs
+        if kwargs:
+            raise ValueError(f"Unexpected argument(s): {', '.join(kwargs.keys())}")
+
+        if v is not None:
+            x, y, z = v
+        super().__init__(Vector(x, y, z))
 
 
 class Matrix:
@@ -2374,8 +2378,10 @@ class Plane(metaclass=PlaneMeta):
         manually chain together multiple rotate() commands.
 
         Args:
-            rotation (VectorLike, optional): (xDegrees, yDegrees, zDegrees). Defaults to (0, 0, 0).
-            ordering (Intrinsic |  Extrinsic, optional): order of rotations in Intrinsic or Extrinsic rotation mode, defaults to Intrinsic.XYZ
+            rotation (VectorLike, optional): (xDegrees, yDegrees, zDegrees).
+                Defaults to (0, 0, 0).
+            ordering (Intrinsic |  Extrinsic, optional): order of rotations in
+                Intrinsic or Extrinsic rotation mode, defaults to Intrinsic.XYZ
 
         Returns:
             Plane: a copy of this plane rotated as requested.
@@ -2600,24 +2606,24 @@ class Plane(metaclass=PlaneMeta):
         if axis is not None:
             if self.contains(axis):
                 return axis
+
+            geom_line = Geom_Line(axis.wrapped)
+            geom_plane = Geom_Plane(self.local_coord_system)
+
+            intersection_calculator = GeomAPI_IntCS(geom_line, geom_plane)
+
+            if (
+                intersection_calculator.IsDone()
+                and intersection_calculator.NbPoints() == 1
+            ):
+                # Get the intersection point
+                intersection_point = Vector(intersection_calculator.Point(1))
             else:
-                geom_line = Geom_Line(axis.wrapped)
-                geom_plane = Geom_Plane(self.local_coord_system)
+                intersection_point = None
 
-                intersection_calculator = GeomAPI_IntCS(geom_line, geom_plane)
+            return intersection_point
 
-                if (
-                    intersection_calculator.IsDone()
-                    and intersection_calculator.NbPoints() == 1
-                ):
-                    # Get the intersection point
-                    intersection_point = Vector(intersection_calculator.Point(1))
-                else:
-                    intersection_point = None
-
-                return intersection_point
-
-        elif plane is not None:
+        if plane is not None:
             surface1 = Geom_Plane(self.wrapped)
             surface2 = Geom_Plane(plane.wrapped)
             intersector = GeomAPI_IntSS(surface1, surface2, TOLERANCE)
@@ -2628,15 +2634,15 @@ class Plane(metaclass=PlaneMeta):
                 axis = intersection_line.Position()
                 return Axis(axis)
 
-        elif vector is not None and self.contains(vector):
+        if vector is not None and self.contains(vector):
             return vector
 
-        elif location is not None:
+        if location is not None:
             pln = Plane(location)
             if pln.origin == self.origin and pln.z_dir == self.z_dir:
                 return location
 
-        elif shape is not None:
+        if shape is not None:
             return shape.intersect(self)
 
 

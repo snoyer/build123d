@@ -2027,6 +2027,16 @@ class TestLocation(DirectApiTestCase):
 
         self.assertIsNone(b.intersect(b.moved(Pos(X=10))))
 
+    def test_pos(self):
+        with self.assertRaises(TypeError):
+            Pos(0, "foo")
+        self.assertEqual(Pos(1, 2, 3).position, Vector(1, 2, 3))
+        self.assertEqual(Pos((1, 2, 3)).position, Vector(1, 2, 3))
+        self.assertEqual(Pos(v=(1, 2, 3)).position, Vector(1, 2, 3))
+        self.assertEqual(Pos(X=1, Y=2, Z=3).position, Vector(1, 2, 3))
+        self.assertEqual(Pos(Vector(1, 2, 3)).position, Vector(1, 2, 3))
+        self.assertEqual(Pos(1, Y=2, Z=3).position, Vector(1, 2, 3))
+
 
 class TestMatrix(DirectApiTestCase):
     def test_matrix_creation_and_access(self):
