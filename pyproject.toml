@@ -52,6 +52,43 @@ dependencies = [
 "Documentation" = "https://build123d.readthedocs.io/en/latest/index.html"
 "Bug Tracker" = "https://github.com/gumyr/build123d/issues"
 
+[project.optional-dependencies]
+# enable the optional ocp_vscode visualization package
+ocp_vscode = [
+    "ocp_vscode",
+]
+
+# development dependencies
+development = [
+    "wheel",
+    "pytest",
+    "pytest-cov",
+    "pylint",
+    "mypy",
+    "black",
+]
+
+# dependency to run the pytest benchmarks
+benchmark = [
+    "pytest-benchmark",
+]
+
+# dependencies to build the docs
+docs = [
+    "sphinx",
+    "sphinx-design",
+    "sphinx-copybutton",
+    "sphinx-hoverxref",
+]
+
+# all dependencies
+all = [
+    "build123d[ocp_vscode]",
+    "build123d[development]",
+    "build123d[benchmark]",
+    "build123d[docs]",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 # exclude build123d._dev from wheels
