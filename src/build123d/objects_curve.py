@@ -28,7 +28,7 @@ license:
 
 from __future__ import annotations
 
-import copy
+import copy as copy_module
 from math import copysign, cos, radians, sin, sqrt
 from scipy.optimize import minimize
 from typing import Union
@@ -151,7 +151,9 @@ class CenterArc(BaseEdgeObject):
         if context is None:
             circle_workplane = Plane.XY
         else:
-            circle_workplane = copy.copy(WorkplaneList._get_context().workplanes[0])
+            circle_workplane = copy_module.copy(
+                WorkplaneList._get_context().workplanes[0]
+            )
         circle_workplane.origin = center_point
         arc_direction = (
             AngularDirection.COUNTER_CLOCKWISE
@@ -415,7 +417,9 @@ class EllipticalCenterArc(BaseEdgeObject):
         if context is None:
             ellipse_workplane = Plane.XY
         else:
-            ellipse_workplane = copy.copy(WorkplaneList._get_context().workplanes[0])
+            ellipse_workplane = copy_module.copy(
+                WorkplaneList._get_context().workplanes[0]
+            )
         ellipse_workplane.origin = center_pnt
         curve = Edge.make_ellipse(
             x_radius=x_radius,
@@ -601,7 +605,9 @@ class JernArc(BaseEdgeObject):
         if context is None:
             jern_workplane = Plane.XY
         else:
-            jern_workplane = copy.copy(WorkplaneList._get_context().workplanes[0])
+            jern_workplane = copy_module.copy(
+                WorkplaneList._get_context().workplanes[0]
+            )
         jern_workplane.origin = start
         start_tangent = Vector(tangent).transform(
             jern_workplane.reverse_transform, is_direction=True
@@ -615,7 +621,7 @@ class JernArc(BaseEdgeObject):
             Axis(start, jern_workplane.z_dir), arc_size
         )
         if abs(arc_size) >= 360:
-            circle_plane = copy.copy(jern_workplane)
+            circle_plane = copy_module.copy(jern_workplane)
             circle_plane.origin = self.center_point
             circle_plane.x_dir = self.start - circle_plane.origin
             arc = Edge.make_circle(radius, circle_plane)
@@ -732,7 +738,9 @@ class PolarLine(BaseEdgeObject):
         if context is None:
             polar_workplane = Plane.XY
         else:
-            polar_workplane = copy.copy(WorkplaneList._get_context().workplanes[0])
+            polar_workplane = copy_module.copy(
+                WorkplaneList._get_context().workplanes[0]
+            )
 
         if direction is not None:
             direction_localized = WorkplaneList.localize(direction)
@@ -879,7 +887,9 @@ class SagittaArc(BaseEdgeObject):
         if context is None:
             sagitta_workplane = Plane.XY
         else:
-            sagitta_workplane = copy.copy(WorkplaneList._get_context().workplanes[0])
+            sagitta_workplane = copy_module.copy(
+                WorkplaneList._get_context().workplanes[0]
+            )
         sagitta_vector: Vector = (end - start).normalized() * abs(sagitta)
         sagitta_vector = sagitta_vector.rotate(
             Axis(sagitta_workplane.origin, sagitta_workplane.z_dir),

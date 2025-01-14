@@ -27,7 +27,7 @@ license:
 
 """
 
-import copy
+import copy as copy_module
 import logging
 from math import radians, tan
 from typing import cast, TypeAlias
@@ -537,7 +537,7 @@ def mirror(
 
     validate_inputs(context, "mirror", object_list)
 
-    mirrored = [copy.deepcopy(o).mirror(about) for o in object_list]
+    mirrored = [copy_module.deepcopy(o).mirror(about) for o in object_list]
 
     if context is not None:
         context._add_to_context(*mirrored, mode=mode)
@@ -794,10 +794,13 @@ def project(
         if mode != Mode.PRIVATE and point_list:
             raise ValueError("Points can only be projected in PRIVATE mode")
         if target is None:
-            target = context._obj
+            target = context.part
         projection_flip = -1
     else:
         target = Face.make_rect(3 * object_size, 3 * object_size, plane=working_plane)
+
+    if target is None:
+        raise ValueError("A target object could not be determined")
 
     validate_inputs(context, "project")
 

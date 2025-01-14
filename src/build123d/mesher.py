@@ -81,7 +81,7 @@ license:
 
 # pylint has trouble with the OCP imports
 # pylint: disable=no-name-in-module, import-error
-import copy
+import copy as copy_module
 import ctypes
 import math
 import os
@@ -396,7 +396,7 @@ class Mesher:
 
             # Mesh the shape
             ocp_mesh_vertices, triangles = Mesher._mesh_shape(
-                copy.deepcopy(b3d_shape),
+                copy_module.deepcopy(b3d_shape),
                 linear_deflection,
                 angular_deflection,
             )

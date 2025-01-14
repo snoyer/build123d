@@ -34,7 +34,7 @@ from __future__ import annotations
 # other pylint warning to temp remove:
 #   too-many-arguments, too-many-locals, too-many-public-methods,
 #   too-many-statements, too-many-instance-attributes, too-many-branches
-import copy
+import copy as copy_module
 import json
 import logging
 import numpy as np
@@ -1519,7 +1519,7 @@ class Location:
             except KeyError as exc:
                 raise ValueError(f"Unknown object type {other}") from exc
 
-            result: Shape = copy.deepcopy(other, None)  # type: ignore[arg-type]
+            result: Shape = copy_module.deepcopy(other, None)  # type: ignore[arg-type]
             result.wrapped = f_downcast(other.wrapped.Moved(self.wrapped))
             return result
 
@@ -2407,7 +2407,7 @@ class Plane(metaclass=PlaneMeta):
         Returns:
             Plane: relocated plane
         """
-        self_copy = copy.deepcopy(self)
+        self_copy = copy_module.deepcopy(self)
         self_copy.wrapped.Transform(loc.wrapped.Transformation())
         return Plane(self_copy.wrapped)
 
@@ -2504,7 +2504,7 @@ class Plane(metaclass=PlaneMeta):
             except KeyError as exc:
                 raise ValueError(f"Unknown object type {obj}") from exc
 
-            new_shape: Shape = copy.deepcopy(obj, None)  # type: ignore[arg-type]
+            new_shape: Shape = copy_module.deepcopy(obj, None)  # type: ignore[arg-type]
             new_shape.wrapped = f_downcast(
                 BRepBuilderAPI_Transform(
                     obj.wrapped, transform_matrix.wrapped.Trsf()
