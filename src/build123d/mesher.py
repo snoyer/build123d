@@ -312,36 +312,42 @@ class Mesher:
         # Round off the vertices to avoid vertices within tolerance being
         # considered as different vertices
         digits = -int(round(math.log(TOLERANCE, 10), 1))
-        ocp_mesh_vertices = [
-            (round(x, digits), round(y, digits), round(z, digits))
-            for x, y, z in ocp_mesh_vertices
+        
+        # Create vertex to index mapping directly
+        vertex_to_idx = {}
+        next_idx = 0
+        vert_table = {}
+        
+        # First pass - create mapping
+        for i, (x, y, z) in enumerate(ocp_mesh_vertices):
+            key = (round(x, digits), round(y, digits), round(z, digits))
+            if key not in vertex_to_idx:
+                vertex_to_idx[key] = next_idx
+                next_idx += 1
+            vert_table[i] = vertex_to_idx[key]
+        
+        # Create vertices array in one shot
+        vertices_3mf = [
+            Lib3MF.Position((ctypes.c_float * 3)(*v))
+            for v in vertex_to_idx.keys()
         ]
-        """Create the data to create a 3mf mesh"""
-        # Create a lookup table of face vertex to shape vertex
-        unique_vertices = list(set(ocp_mesh_vertices))
-        vert_table = {
-            i: unique_vertices.index(pnt) for i, pnt in enumerate(ocp_mesh_vertices)
-        }
-
-        # Create vertex list of 3MF positions
-        vertices_3mf = []
-        for pnt in unique_vertices:
-            c_array = (ctypes.c_float * 3)(*pnt)
-            vertices_3mf.append(Lib3MF.Position(c_array))
-            # mesh_3mf.AddVertex  Should AddVertex be used to save memory?
-
-        # Create triangle point list
+        
+        # Pre-allocate triangles array and process in bulk
+        c_uint3 = ctypes.c_uint * 3
         triangles_3mf = []
-        for vertex_indices in triangles:
-            mapped_indices = [
-                vert_table[i] for i in [vertex_indices[i] for i in range(3)]
-            ]
-            # Remove degenerate triangles
-            if len(set(mapped_indices)) != 3:
-                continue
-            c_array = (ctypes.c_uint * 3)(*mapped_indices)  # type: ignore[assignment]
-            triangles_3mf.append(Lib3MF.Triangle(c_array))
-
+        
+        # Process triangles in bulk
+        for tri in triangles:
+            # Map indices directly without list comprehension
+            a, b, c = tri[0], tri[1], tri[2]
+            mapped_a = vert_table[a]
+            mapped_b = vert_table[b]
+            mapped_c = vert_table[c]
+            
+            # Quick degenerate check without set creation
+            if mapped_a != mapped_b and mapped_b != mapped_c and mapped_c != mapped_a:
+                triangles_3mf.append(Lib3MF.Triangle(c_uint3(mapped_a, mapped_b, mapped_c)))
+        
         return (vertices_3mf, triangles_3mf)
 
     def _add_color(self, b3d_shape: Shape, mesh_3mf: Lib3MF.MeshObject):

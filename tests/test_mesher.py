@@ -2,6 +2,7 @@ import unittest, uuid
 from packaging.specifiers import SpecifierSet
 from pathlib import Path
 from os import fsdecode, fsencode
+import time
 
 import pytest
 
@@ -16,6 +17,19 @@ from build123d.topology import Compound, Solid
 from build123d.geometry import Axis, Color, Location, Vector, VectorLike
 from build123d.mesher import Mesher
 
+class InternalApiBenchmark(unittest.TestCase):
+    def test_create_3mf_mesh(self):
+        start = time.perf_counter()
+        for i in [100, 1000, 10000, 100000]:
+            vertices = [(float(i), 0.0, 0.0) for i in range(i)]
+            triangles = [[i, i+1, i+2] for i in range(0, i-3, 3)] 
+            start = time.perf_counter()
+            Mesher()._create_3mf_mesh(vertices, triangles)
+            runtime = time.perf_counter() - start
+            print(f"| {i} | {runtime:.3f} |")
+        final_runtime = time.perf_counter() - start
+        max_runtime = 1.0
+        self.assertLessEqual(final_runtime, max_runtime, f"All meshes took {final_runtime:.3f}s > {max_runtime}s")
 
 class DirectApiTestCase(unittest.TestCase):
     def assertTupleAlmostEquals(
