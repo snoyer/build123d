@@ -1,7 +1,5 @@
 import pytest
-import importlib
 from math import sqrt
-import time
 from build123d import *
 
 
