@@ -1,10 +1,12 @@
 import pytest
 import importlib
 from math import sqrt
+import time
 from build123d import *
 
 
 pytest_benchmark = pytest.importorskip("pytest_benchmark")
+
 
 def test_ppp_0101(benchmark):
     def model():
@@ -616,8 +618,10 @@ def test_ttt_23_02_02(benchmark):
 
     benchmark(model)
 
+
 # def test_ttt_23_T_24(benchmark):
 # excluding because it requires sympy
+
 
 def test_ttt_24_SPO_06(benchmark):
     def model():
@@ -675,3 +679,17 @@ def test_ttt_24_SPO_06(benchmark):
         assert p.part.scale(IN).volume * densa / LB == pytest.approx(3.92, 0.03)
 
     benchmark(model)
+
+
+@pytest.mark.parametrize("test_input", [100, 1000, 10000, 100000])
+def test_mesher_benchmark(benchmark, test_input):
+    # in the 100_000 case test should take on the order of 0.2 seconds
+    # but usually less than 1 second
+    def test_create_3mf_mesh(i):
+        vertices = [(float(i), 0.0, 0.0) for i in range(i)]
+        triangles = [[i, i + 1, i + 2] for i in range(0, i - 3, 3)]
+        mesher = Mesher()._create_3mf_mesh(vertices, triangles)
+        assert len(mesher[0]) == i
+        assert len(mesher[1]) == int(i / 3)
+
+    benchmark(test_create_3mf_mesh, test_input)
