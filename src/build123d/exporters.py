@@ -46,6 +46,7 @@ from ezdxf import zoom
 from ezdxf.colors import RGB, aci2rgb
 from ezdxf.math import Vec2
 from OCP.BRepLib import BRepLib
+from OCP.BRepTools import BRepTools_WireExplorer
 from OCP.Geom import Geom_BezierCurve
 from OCP.GeomConvert import GeomConvert
 from OCP.GeomConvert import GeomConvert_BSplineCurveToBezierCurve
@@ -1109,15 +1110,15 @@ class ExportSVG(Export2D):
 
     @staticmethod
     def _wire_edges(wire: Wire, reverse: bool) -> list[Edge]:
-        # edges = []
-        # explorer = BRepTools_WireExplorer(wire.wrapped)
-        # while explorer.More():
-        #     topo_edge = explorer.Current()
-        #     edges.append(Edge(topo_edge))
-        #     explorer.Next()
-        edges = wire.edges()
-        if reverse:
-            edges.reverse()
+        edges = []
+        explorer = BRepTools_WireExplorer(wire.wrapped)
+        while explorer.More():
+            topo_edge = explorer.Current()
+            edges.append(Edge(topo_edge))
+            explorer.Next()
+        # edges = wire.edges()
+        # if reverse:
+        #     edges.reverse()
         return edges
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

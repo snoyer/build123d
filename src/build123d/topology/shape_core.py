@@ -53,13 +53,10 @@ from abc import ABC, abstractmethod
 from typing import (
     cast as tcast,
     Any,
-    Dict,
     Generic,
     Optional,
     Protocol,
     SupportsIndex,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     overload,
@@ -70,7 +67,7 @@ from collections.abc import Callable, Iterable, Iterator
 
 import OCP.GeomAbs as ga
 import OCP.TopAbs as ta
-from IPython.lib.pretty import pretty, PrettyPrinter
+from IPython.lib.pretty import pretty, RepresentationPrinter
 from OCP.Aspect import Aspect_TOL_SOLID
 from OCP.BOPAlgo import BOPAlgo_GlueEnum
 from OCP.BRep import BRep_Tool
@@ -2204,7 +2201,9 @@ class GroupBy(Generic[T, K]):
         """Select group by shape"""
         return self.group(self.key_f(shape))
 
-    def _repr_pretty_(self, printer: PrettyPrinter, cycle: bool = False) -> None:
+    def _repr_pretty_(
+        self, printer: RepresentationPrinter, cycle: bool = False
+    ) -> None:
         """
         Render a formatted representation of the object for pretty-printing in
         interactive environments.
@@ -2840,9 +2839,7 @@ def _topods_entities(shape: TopoDS_Shape, topo_type: Shapes) -> list[TopoDS_Shap
 
     while explorer.More():
         item = explorer.Current()
-        out[hash(item)] = (
-            item  # needed to avoid pseudo-duplicate entities
-        )
+        out[hash(item)] = item  # needed to avoid pseudo-duplicate entities
         explorer.Next()
 
     return list(out.values())

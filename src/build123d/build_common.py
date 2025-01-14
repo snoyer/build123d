@@ -1322,7 +1322,11 @@ class WorkplaneList:
             points_per_workplane = []
             workplane = WorkplaneList._get_context().workplanes[0]
             localized_pts = [
-                workplane.from_local_coords(pt) if isinstance(pt, tuple) else pt
+                (
+                    cast(Vector, workplane.from_local_coords(Vector(pt)))
+                    if isinstance(pt, tuple)
+                    else Vector(pt)
+                )
                 for pt in points
             ]
             if len(localized_pts) == 1:
