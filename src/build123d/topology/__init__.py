@@ -51,9 +51,9 @@ from .utils import (
     find_max_dimension,
 )
 from .zero_d import Vertex, topo_explore_common_vertex
-from .one_d import Edge, Wire, edges_to_wires, topo_explore_connected_edges
-from .two_d import Face, Shell, sort_wires_by_build_order
-from .three_d import Solid
+from .one_d import Edge, Wire, Mixin1D, edges_to_wires, topo_explore_connected_edges
+from .two_d import Face, Shell, Mixin2D,sort_wires_by_build_order
+from .three_d import Solid, Mixin3D
 from .composite import Compound, Curve, Sketch, Part
 
 __all__ = [
