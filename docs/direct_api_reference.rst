@@ -1,3 +1,4 @@
+
 ####################
 Direct API Reference
 ####################
@@ -52,7 +53,7 @@ supplementary functionality specific to 1D
 `~topology.Solid`) objects respectively.
 Note that a :class:`~topology.Compound` may be contain only 1D, 2D (:class:`~topology.Face`)  or 3D objects.
 
-.. inheritance-diagram:: topology
+.. inheritance-diagram:: topology.shape_core topology.zero_d topology.one_d topology.two_d topology.three_d topology.composite topology.utils
    :parts: 1
 
 .. py:module:: topology
@@ -63,6 +64,7 @@ Note that a :class:`~topology.Compound` may be contain only 1D, 2D (:class:`~top
    :special-members: __neg__
 .. autoclass:: Mixin1D
    :special-members: __matmul__, __mod__
+.. autoclass:: Mixin2D
 .. autoclass:: Mixin3D
 .. autoclass:: Shape
    :special-members: __add__, __sub__, __and__, __rmul__, __eq__, __copy__, __deepcopy__, __hash__

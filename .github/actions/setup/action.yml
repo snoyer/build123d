@@ -14,5 +14,4 @@ runs:
     - name: Install Requirements
       shell: bash
       run: |
-        pip install wheel mypy pytest pytest-cov pylint 
-        pip install .
+        pip install .[development]
