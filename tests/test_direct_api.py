@@ -2027,6 +2027,33 @@ class TestLocation(DirectApiTestCase):
 
         self.assertIsNone(b.intersect(b.moved(Pos(X=10))))
 
+        # Look for common vertices
+        e1 = Edge.make_line((0, 0), (1, 0))
+        e2 = Edge.make_line((1, 0), (1, 1))
+        e3 = Edge.make_line((1, 0), (2, 0))
+        i = e1.intersect(e2)
+        self.assertEqual(len(i.vertices()), 1)
+        self.assertEqual(tuple(i.vertex()), (1, 0, 0))
+        i = e1.intersect(e3)
+        self.assertEqual(len(i.vertices()), 1)
+        self.assertEqual(tuple(i.vertex()), (1, 0, 0))
+
+        # Intersect with plane
+        e1 = Edge.make_line((0, 0), (2, 0))
+        p1 = Plane.YZ.offset(1)
+        i = e1.intersect(p1)
+        self.assertEqual(len(i.vertices()), 1)
+        self.assertEqual(tuple(i.vertex()), (1, 0, 0))
+
+        e2 = Edge.make_line(p1.origin, p1.origin + 2 * p1.x_dir)
+        i = e2.intersect(p1)
+        self.assertEqual(len(i.vertices()), 2)
+        self.assertEqual(len(i.edges()), 1)
+        self.assertAlmostEqual(i.edge().length, 2, 5)
+
+        with self.assertRaises(ValueError):
+            e1.intersect("line")
+
     def test_pos(self):
         with self.assertRaises(TypeError):
             Pos(0, "foo")

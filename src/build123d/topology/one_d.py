@@ -54,11 +54,14 @@ from __future__ import annotations
 import copy
 import itertools
 import warnings
+from collections.abc import Iterable
 from itertools import combinations
 from math import radians, inf, pi, cos, copysign, ceil, floor
-from typing import Tuple, Union, overload, TYPE_CHECKING
-
-from collections.abc import Iterable
+from typing import Literal, overload, TYPE_CHECKING
+from typing_extensions import Self
+from numpy import ndarray
+from scipy.optimize import minimize
+from scipy.spatial import ConvexHull
 
 import OCP.TopAbs as ta
 from OCP.BRep import BRep_Tool
@@ -163,12 +166,6 @@ from build123d.geometry import (
     VectorLike,
     logger,
 )
-from numpy import ndarray
-from scipy.optimize import minimize
-from scipy.spatial import ConvexHull
-from typing_extensions import Self
-
-from typing import Literal
 
 from .shape_core import (
     Shape,
@@ -370,10 +367,10 @@ class Mixin1D(Shape):
         of the infinite number of valid planes.
 
         Args:
-            lines (sequence of Union[Edge,Wire]): edges in common with self
+            lines (sequence of Edge | Wire): edges in common with self
 
         Returns:
-            Union[None, Plane]: Either the common plane or None
+            None |  Plane: Either the common plane or None
         """
         # pylint: disable=too-many-locals
         # Note: BRepLib_FindSurface is not helpful as it requires the
@@ -912,7 +909,7 @@ class Mixin1D(Shape):
         Split this shape by the provided plane or face.
 
         Args:
-            surface (Union[Plane,Face]): surface to segment shape
+            surface (Plane | Face): surface to segment shape
             keep (Keep, optional): which object(s) to save. Defaults to Keep.TOP.
 
         Returns:
@@ -1044,7 +1041,7 @@ class Mixin1D(Shape):
         is either a float (or int) parameter or a point that lies on the shape.
 
         Args:
-            position (Union[float, VectorLike]): distance, parameter value, or
+            position (float |  VectorLike): distance, parameter value, or
                 point on shape. Defaults to 0.5.
             position_mode (PositionMode, optional): position calculation mode.
                 Defaults to PositionMode.PARAMETER.
@@ -1650,7 +1647,7 @@ class Edge(Mixin1D, Shape[TopoDS_Edge]):
         Distribute locations along edge or wire.
 
         Args:
-          self: Union[Wire:Edge]:
+          self: Wire:Edge:
           count(int): Number of locations to generate
           start(float): position along Edge|Wire to start. Defaults to 0.0.
           stop(float): position along Edge|Wire to end. Defaults to 1.0.
@@ -1824,10 +1821,10 @@ class Edge(Mixin1D, Shape[TopoDS_Edge]):
         """intersect Edge with Edge or Axis
 
         Args:
-            other (Union[Edge, Axis]): other object
+            other (Edge |  Axis): other object
 
         Returns:
-            Union[Shape, None]: Compound of vertices and/or edges
+            Shape |  None: Compound of vertices and/or edges
         """
         edges: list[Edge] = []
         planes: list[Plane] = []
@@ -1846,9 +1843,15 @@ class Edge(Mixin1D, Shape[TopoDS_Edge]):
 
         # Find any edge / edge intersection points
         points_sets: list[set[Vector]] = []
+        # Find crossing points
         for edge_pair in combinations([self] + edges, 2):
             intersection_points = edge_pair[0].find_intersection_points(edge_pair[1])
             points_sets.append(set(intersection_points))
+
+        # Find common end points
+        self_end_points = set(Vector(v) for v in self.vertices())
+        edge_end_points = set(Vector(v) for edge in edges for v in edge.vertices())
+        common_end_points = set.intersection(self_end_points, edge_end_points)
 
         # Find any edge / plane intersection points & edges
         for edge, plane in itertools.product([self] + edges, planes):
@@ -1867,15 +1870,18 @@ class Edge(Mixin1D, Shape[TopoDS_Edge]):
             points_sets.append(set(plane_intersection_points))
 
             # Find edge intersections
-            if (edge_plane := edge.common_plane()) is not None:  # is a 2D edge
-                if plane.z_dir in (edge_plane.z_dir, -edge_plane.z_dir):
-                    edges_common_to_planes.append(edge)
+            if all(
+                plane.contains(v) for v in edge.positions(i / 7 for i in range(8))
+            ):  # is a 2D edge
+                edges_common_to_planes.append(edge)
 
         edges.extend(edges_common_to_planes)
 
         # Find the intersection of all sets
         common_points = set.intersection(*points_sets)
-        common_vertices = [Vertex(*pnt) for pnt in common_points]
+        common_vertices = [
+            Vertex(pnt) for pnt in common_points.union(common_end_points)
+        ]
 
         # Find Edge/Edge overlaps
         common_edges: list[Edge] = []
@@ -2053,20 +2059,6 @@ class Edge(Mixin1D, Shape[TopoDS_Edge]):
 
         new_edge = BRepBuilderAPI_MakeEdge(trimmed_curve).Edge()
         return Edge(new_edge)
-
-    def _intersect_with_edge(self, edge: Edge) -> tuple[list[Vertex], list[Edge]]:
-        """find intersection vertices and edges"""
-
-        # Find any intersection points
-        vertex_intersections = [
-            Vertex(pnt) for pnt in self.find_intersection_points(edge)
-        ]
-
-        # Find Edge/Edge overlaps
-        intersect_op = BRepAlgoAPI_Common()
-        edge_intersections = self._bool_op((self,), (edge,), intersect_op).edges()
-
-        return vertex_intersections, edge_intersections
 
 
 class Wire(Mixin1D, Shape[TopoDS_Wire]):
@@ -2313,7 +2305,7 @@ class Wire(Mixin1D, Shape[TopoDS_Wire]):
         Combine a list of wires and edges into a list of Wires.
 
         Args:
-            wires (Iterable[Union[Wire, Edge]]): unsorted
+            wires (Iterable[Wire |  Edge]): unsorted
             tol (float, optional): tolerance. Defaults to 1e-9.
 
         Returns:
