@@ -3248,6 +3248,19 @@ class TestShape(DirectApiTestCase):
         outer_vol = 5 * 5
         self.assertAlmostEqual(split.volume, outer_vol - inner_vol)
 
+    def test_split_edge_by_shell(self):
+        edge = Edge.make_line((-5, 0, 0), (5, 0, 0))
+        tool = Wire.make_rect(4, 4)
+        tool_shell: Shell = Shell.extrude(tool, Vector(0, 0, 1))
+        top = edge.split(tool_shell, keep=Keep.TOP)
+        self.assertEqual(len(top), 2)
+        self.assertAlmostEqual(top[0].length, 3, 5)
+
+    def test_split_return_none(self):
+        shape = Box(1, 1, 1) - Pos((0, 0, -0.25)) * Box(1, 0.5, 0.5)
+        split_shape = shape.split(Plane.XY, keep=Keep.INSIDE)
+        self.assertIsNone(split_shape)
+
     def test_split_by_perimeter(self):
         # Test 0 - extract a spherical cap
         target0 = Solid.make_sphere(10).rotate(Axis.Z, 90)

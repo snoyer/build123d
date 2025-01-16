@@ -78,10 +78,10 @@ from OCP.BRepBuilderAPI import (
 )
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeFillet2d
-from OCP.BRepGProp import BRepGProp
+from OCP.BRepGProp import BRepGProp, BRepGProp_Face
 from OCP.BRepLib import BRepLib, BRepLib_FindSurface
-from OCP.BRepOffset import BRepOffset_MakeOffset
 from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffset
+from OCP.BRepPrimAPI import BRepPrimAPI_MakeHalfSpace
 from OCP.BRepProj import BRepProj_Projection
 from OCP.BRepTools import BRepTools
 from OCP.GC import GC_MakeArcOfCircle, GC_MakeArcOfEllipse
@@ -104,7 +104,7 @@ from OCP.GeomAPI import (
     GeomAPI_PointsToBSpline,
     GeomAPI_ProjectPointOnCurve,
 )
-from OCP.GeomAbs import GeomAbs_Intersection, GeomAbs_JoinType
+from OCP.GeomAbs import GeomAbs_JoinType
 from OCP.GeomAdaptor import GeomAdaptor_Curve
 from OCP.GeomFill import (
     GeomFill_CorrectedFrenet,
@@ -116,7 +116,6 @@ from OCP.HLRBRep import HLRBRep_Algo, HLRBRep_HLRToShape
 from OCP.ShapeAnalysis import ShapeAnalysis_FreeBounds
 from OCP.ShapeFix import ShapeFix_Shape, ShapeFix_Wireframe
 from OCP.Standard import Standard_Failure, Standard_NoSuchObject
-from OCP.StdFail import StdFail_NotDone
 from OCP.TColStd import (
     TColStd_Array1OfReal,
     TColStd_HArray1OfBoolean,
@@ -131,7 +130,14 @@ from OCP.TopTools import (
     TopTools_IndexedDataMapOfShapeListOfShape,
     TopTools_ListOfShape,
 )
-from OCP.TopoDS import TopoDS, TopoDS_Compound, TopoDS_Shape, TopoDS_Edge, TopoDS_Wire
+from OCP.TopoDS import (
+    TopoDS,
+    TopoDS_Compound,
+    TopoDS_Edge,
+    TopoDS_Shape,
+    TopoDS_Shell,
+    TopoDS_Wire,
+)
 from OCP.gp import (
     gp_Ax1,
     gp_Ax2,
@@ -953,21 +959,29 @@ class Mixin1D(Shape):
             split_result = unwrap_topods_compound(split_result, True)
 
         if not isinstance(tool, Plane):
-            # Create solids from the surfaces for sorting by thickening
-            offset_builder = BRepOffset_MakeOffset()
-            offset_builder.Initialize(
-                tool.wrapped,
-                Offset=0.1,
-                Tol=1.0e-5,
-                Intersection=True,
-                Join=GeomAbs_Intersection,
-                Thickening=True,
+            # Get a TopoDS_Face to work with from the tool
+            if isinstance(trim_tool, TopoDS_Shell):
+                faceExplorer = TopExp_Explorer(trim_tool, ta.TopAbs_FACE)
+                tool_face = TopoDS.Face_s(faceExplorer.Current())
+            else:
+                tool_face = trim_tool
+
+            # Create a reference point off the +ve side of the tool
+            surface_point = gp_Pnt()
+            surface_normal = gp_Vec()
+            u_min, u_max, v_min, v_max = BRepTools.UVBounds_s(tool_face)
+            BRepGProp_Face(tool_face).Normal(
+                (u_min + u_max) / 2, (v_min + v_max) / 2, surface_point, surface_normal
             )
-            offset_builder.MakeOffsetShape()
-            try:
-                tool_thickened = downcast(offset_builder.Shape())
-            except StdFail_NotDone as err:
-                raise RuntimeError("Error determining top/bottom") from err
+            normalized_surface_normal = Vector(
+                surface_normal.X(), surface_normal.Y(), surface_normal.Z()
+            ).normalized()
+            surface_point = Vector(surface_point)
+            ref_point = surface_point + normalized_surface_normal
+
+            # Create a HalfSpace - Solidish object to determine top/bottom
+            halfSpaceMaker = BRepPrimAPI_MakeHalfSpace(trim_tool, ref_point.to_pnt())
+            tool_solid = halfSpaceMaker.Solid()
 
         tops: list[Shape] = []
         bottoms: list[Shape] = []
@@ -979,10 +993,11 @@ class Mixin1D(Shape):
             else:
                 # Intersect self and the thickened tool
                 is_up_obj = _topods_bool_op(
-                    (part,), (tool_thickened,), BRepAlgoAPI_Common()
+                    (part,), (tool_solid,), BRepAlgoAPI_Common()
                 )
-                # Calculate volume of intersection
-                BRepGProp.VolumeProperties_s(is_up_obj, properties)
+                # Check for valid intersections
+                BRepGProp.LinearProperties_s(is_up_obj, properties)
+                # Mass represents the total length for linear properties
                 is_up = properties.Mass() >= TOLERANCE
             (tops if is_up else bottoms).append(sub_shape)
 
