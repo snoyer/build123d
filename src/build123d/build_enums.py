@@ -179,11 +179,12 @@ class Intrinsic(Enum):
 class Keep(Enum):
     """Split options"""
 
-    TOP = auto()
+    ALL = auto()
     BOTTOM = auto()
+    BOTH = auto()
     INSIDE = auto()
     OUTSIDE = auto()
-    BOTH = auto()
+    TOP = auto()
 
     def __repr__(self):
         return f"<{self.__class__.__name__}.{self.name}>"

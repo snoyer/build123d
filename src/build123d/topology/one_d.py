@@ -899,6 +899,10 @@ class Mixin1D(Shape):
         """split and keep inside or outside"""
 
     @overload
+    def split(self, tool: TrimmingTool, keep: Literal[Keep.ALL]) -> list[Self]:
+        """split and return the unordered pieces"""
+
+    @overload
     def split(self, tool: TrimmingTool, keep: Literal[Keep.BOTH]) -> tuple[
         Self | list[Self] | None,
         Self | list[Self] | None,
@@ -957,6 +961,14 @@ class Mixin1D(Shape):
         # Remove unnecessary TopoDS_Compound around single shape
         if isinstance(split_result, TopoDS_Compound):
             split_result = unwrap_topods_compound(split_result, True)
+
+        # For speed the user may just want all the objects which they
+        # can sort more efficiently then the generic algoritm below
+        if keep == Keep.ALL:
+            return ShapeList(
+                self.__class__.cast(part)
+                for part in get_top_level_topods_shapes(split_result)
+            )
 
         if not isinstance(tool, Plane):
             # Get a TopoDS_Face to work with from the tool

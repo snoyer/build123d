@@ -3248,6 +3248,12 @@ class TestShape(DirectApiTestCase):
         outer_vol = 5 * 5
         self.assertAlmostEqual(split.volume, outer_vol - inner_vol)
 
+    def test_split_keep_all(self):
+        shape = Box(1, 1, 1)
+        split_shape = shape.split(Plane.XY, keep=Keep.ALL)
+        self.assertTrue(isinstance(split_shape, ShapeList))
+        self.assertEqual(len(split_shape), 2)
+
     def test_split_edge_by_shell(self):
         edge = Edge.make_line((-5, 0, 0), (5, 0, 0))
         tool = Wire.make_rect(4, 4)
