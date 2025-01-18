@@ -46,7 +46,7 @@ from OCP.RWGltf import RWGltf_CafWriter
 from OCP.STEPCAFControl import STEPCAFControl_Controller, STEPCAFControl_Writer
 from OCP.STEPControl import STEPControl_Controller, STEPControl_StepModelType
 from OCP.StlAPI import StlAPI_Writer
-from OCP.TCollection import TCollection_AsciiString, TCollection_ExtendedString
+from OCP.TCollection import TCollection_AsciiString, TCollection_ExtendedString, TCollection_HAsciiString
 from OCP.TColStd import TColStd_IndexedDataMapOfStringString
 from OCP.TDataStd import TDataStd_Name
 from OCP.TDF import TDF_Label
@@ -55,6 +55,7 @@ from OCP.TopExp import TopExp_Explorer
 from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool
 from OCP.XSControl import XSControl_WorkSession
+from OCP.APIHeaderSection import APIHeaderSection_MakeHeader
 
 from build123d.build_common import UNITS_PER_METER
 from build123d.build_enums import PrecisionMode, Unit
@@ -298,16 +299,12 @@ def export_step(
     writer.SetLayerMode(True)
     writer.SetNameMode(True)
 
-    #
-    # APIHeaderSection doesn't seem to be supported by OCP - TBD
-    #
-
-    # APIHeaderSection_MakeHeader makeHeader(writer.Writer().Model())
-    # makeHeader.SetName(TCollection_HAsciiString(path))
-    # makeHeader.SetAuthorValue (1, TCollection_HAsciiString("Volker"));
-    # makeHeader.SetOrganizationValue (1, TCollection_HAsciiString("myCompanyName"));
-    # makeHeader.SetOriginatingSystem(TCollection_HAsciiString("myApplicationName"));
-    # makeHeader.SetDescriptionValue(1, TCollection_HAsciiString("myApplication Model"));
+    header = APIHeaderSection_MakeHeader(writer.Writer().Model())
+    # header.SetName(TCollection_HAsciiString(path))
+    # header.SetAuthorValue(1, TCollection_HAsciiString("Volker"));
+    # header.SetOrganizationValue(1, TCollection_HAsciiString("myCompanyName"));
+    header.SetOriginatingSystem(TCollection_HAsciiString("build123d"));
+    # header.SetDescriptionValue(1, TCollection_HAsciiString("myApplication Model"));
 
     STEPCAFControl_Controller.Init_s()
     STEPControl_Controller.Init_s()
