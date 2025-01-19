@@ -28,7 +28,7 @@ from json import dumps
 import os
 from string import Template
 from typing import Any, Dict, List
-from IPython.display import Javascript
+from IPython.display import HTML
 from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
 
 DEFAULT_COLOR = [1, 0.8, 0, 1]
@@ -65,8 +65,8 @@ def to_vtkpoly_string(
     return writer.GetOutputString()
 
 
-def display(shape: Any) -> Javascript:
-    """display
+def shape_to_html(shape: Any) -> HTML:
+    """shape_to_html
 
     Args:
         shape (Shape): object to display
@@ -75,7 +75,7 @@ def display(shape: Any) -> Javascript:
         ValueError: not a valid Shape
 
     Returns:
-        Javascript: code
+        HTML: html code
     """
     payload: list[dict[str, Any]] = []
 
@@ -90,6 +90,10 @@ def display(shape: Any) -> Javascript:
             "orientation": [0, 0, 0],
         }
     )
-    code = Template(TEMPLATE_JS).substitute(data=dumps(payload), element="element", ratio=0.5)
 
-    return Javascript(code)
+    # A new div with a unique id, plus the JS code templated with the id
+    div_id = "shape-" + str(id(shape))
+    code = Template(TEMPLATE_JS).substitute(data=dumps(payload), div_id=div_id, ratio=0.5)
+    html = HTML(f"<div id={div_id}></div><script>{code}</script>")
+
+    return html

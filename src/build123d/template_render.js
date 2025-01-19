@@ -1,4 +1,4 @@
-function render(data, parent_element, ratio){
+function render(data, div_id, ratio){
 
     // Initial setup
     const renderWindow = vtk.Rendering.Core.vtkRenderWindow.newInstance();
@@ -45,18 +45,9 @@ function render(data, parent_element, ratio){
     const openglRenderWindow = vtk.Rendering.OpenGL.vtkRenderWindow.newInstance();
     renderWindow.addView(openglRenderWindow);
 
-    // Add output to the "parent element"
-    var container;
-    var dims;
-
-    if(typeof(parent_element.appendChild) !== "undefined"){
-        container = document.createElement("div");
-        parent_element.appendChild(container);
-        dims = parent_element.getBoundingClientRect();
-    }else{
-        container = parent_element.append("<div/>").children("div:last-child").get(0);
-        dims = parent_element.get(0).getBoundingClientRect();
-    };
+    // Get the div container    
+    const container = document.getElementById(div_id);
+    const dims = container.parentElement.getBoundingClientRect();
 
     openglRenderWindow.setContainer(container);
 
@@ -130,8 +121,10 @@ new Promise(
     } else { resolve() };
  }
 ).then(() => {
-    // element, data and ratio are templated by python
-    var parent_element = $element;
-    var data = $data;
-    render(data, parent_element, $ratio);
+    // data, div_id and ratio are templated by python
+    const div_id = "$div_id";
+    const data = $data;
+    const ratio = $ratio;
+
+    render(data, div_id, ratio);
 });
