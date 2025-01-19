@@ -36,6 +36,7 @@ from typing import Union
 
 import OCP.TopAbs as ta
 from anytree import PreOrderIter
+from OCP.APIHeaderSection import APIHeaderSection_MakeHeader
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.BRepTools import BRepTools
 from OCP.IFSelect import IFSelect_ReturnStatus
@@ -55,7 +56,6 @@ from OCP.TopExp import TopExp_Explorer
 from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool
 from OCP.XSControl import XSControl_WorkSession
-from OCP.APIHeaderSection import APIHeaderSection_MakeHeader
 
 from build123d.build_common import UNITS_PER_METER
 from build123d.build_enums import PrecisionMode, Unit
@@ -301,9 +301,10 @@ def export_step(
 
     header = APIHeaderSection_MakeHeader(writer.Writer().Model())
     # header.SetName(TCollection_HAsciiString(path))
+    # consider using e.g. the non *Value versions instead
     # header.SetAuthorValue(1, TCollection_HAsciiString("Volker"));
     # header.SetOrganizationValue(1, TCollection_HAsciiString("myCompanyName"));
-    header.SetOriginatingSystem(TCollection_HAsciiString("build123d"));
+    header.SetOriginatingSystem(TCollection_HAsciiString("build123d"))
     # header.SetDescriptionValue(1, TCollection_HAsciiString("myApplication Model"));
 
     STEPCAFControl_Controller.Init_s()
