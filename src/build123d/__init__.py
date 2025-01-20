@@ -28,6 +28,7 @@ modify_copyreg()
 
 __all__ = [
     # Length Constants
+    "MC",
     "MM",
     "CM",
     "M",
