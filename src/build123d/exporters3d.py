@@ -300,7 +300,8 @@ def export_step(
     writer.SetNameMode(True)
 
     header = APIHeaderSection_MakeHeader(writer.Writer().Model())
-    # header.SetName(TCollection_HAsciiString(path))
+    if to_export.label:
+        header.SetName(TCollection_HAsciiString(to_export.label))
     # consider using e.g. the non *Value versions instead
     # header.SetAuthorValue(1, TCollection_HAsciiString("Volker"));
     # header.SetOrganizationValue(1, TCollection_HAsciiString("myCompanyName"));
