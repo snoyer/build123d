@@ -26,6 +26,7 @@ license:
 # pylint: disable=no-name-in-module
 from json import dumps
 import os
+import uuid
 from string import Template
 from typing import Any, Dict, List
 from IPython.display import HTML
@@ -92,7 +93,7 @@ def shape_to_html(shape: Any) -> HTML:
     )
 
     # A new div with a unique id, plus the JS code templated with the id
-    div_id = "shape-" + str(id(shape))
+    div_id = 'shape-' + uuid.uuid4().hex[:8]
     code = Template(TEMPLATE_JS).substitute(data=dumps(payload), div_id=div_id, ratio=0.5)
     html = HTML(f"<div id={div_id}></div><script>{code}</script>")
 
