@@ -60,13 +60,17 @@ ocp_vscode = [
 
 # development dependencies
 development = [
-    "cadquery-ocp-stubs >= 7.8, < 7.9",
     "wheel",
     "pytest",
     "pytest-cov",
     "pylint",
     "mypy",
     "black",
+]
+
+# typing stubs for the OCP CAD kernel
+stubs = [
+    "cadquery-ocp-stubs >= 7.8, < 7.9",
 ]
 
 # dependency to run the pytest benchmarks
@@ -90,6 +94,7 @@ all = [
     "build123d[development]",
     "build123d[benchmark]",
     "build123d[docs]",
+    # "build123d[stubs]", # excluded for now as mypy fails
 ]
 
 [tool.setuptools.packages.find]
