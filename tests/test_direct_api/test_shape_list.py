@@ -79,6 +79,20 @@ class TestShapeList(unittest.TestCase):
         faces = Solid.make_box(1, 2, 3).faces() < SortBy.AREA
         self.assertAlmostEqual(faces[-1].area, 2, 5)
 
+    def test_sort_by_lambda(self):
+        c = Solid.make_cone(2, 1, 2)
+        flat_faces = c.faces().filter_by(GeomType.PLANE)
+        sorted_flat_faces = flat_faces.sort_by(lambda f: f.area)
+        smallest = sorted_flat_faces[0]
+        largest = sorted_flat_faces[-1]
+
+        self.assertAlmostEqual(smallest.area, math.pi * 1**2, 5)
+        self.assertAlmostEqual(largest.area, math.pi * 2**2, 5)
+
+    def test_sort_by_invalid(self):
+        with self.assertRaises(ValueError):
+            Solid.make_box(1, 1, 1).faces().sort_by(">Z")
+
     def test_filter_by_geomtype(self):
         non_planar_faces = (
             Solid.make_cylinder(1, 1).faces().filter_by(GeomType.PLANE, reverse=True)

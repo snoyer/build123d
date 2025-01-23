@@ -2624,7 +2624,9 @@ class ShapeList(list[T]):
         return ShapeList([s for shape in self for s in shape.solids()])  # type: ignore
 
     def sort_by(
-        self, sort_by: Axis | Edge | Wire | SortBy = Axis.Z, reverse: bool = False
+        self,
+        sort_by: Axis | Callable[[T], K] | Edge | Wire | SortBy = Axis.Z,
+        reverse: bool = False,
     ) -> ShapeList[T]:
         """sort by
 
@@ -2632,14 +2634,24 @@ class ShapeList(list[T]):
         objects.
 
         Args:
-            sort_by (SortBy, optional): sort criteria. Defaults to SortBy.Z.
+            sort_by (Axis | Callable[[T], K] | Edge | Wire | SortBy, optional): sort criteria.
+               Defaults to Axis.Z.
             reverse (bool, optional): flip order of sort. Defaults to False.
+
+        Raises:
+            ValueError: Cannot sort by an empty axis
+            ValueError: Cannot sort by an empty object
+            ValueError: Invalid sort_by criteria provided
 
         Returns:
             ShapeList: sorted list of objects
         """
 
-        if isinstance(sort_by, Axis):
+        if callable(sort_by):
+            # If a callable is provided, use it directly as the key
+            objects = sorted(self, key=sort_by, reverse=reverse)
+
+        elif isinstance(sort_by, Axis):
             if sort_by.wrapped is None:
                 raise ValueError("Cannot sort by an empty axis")
             assert sort_by.location is not None
@@ -2702,6 +2714,8 @@ class ShapeList(list[T]):
                     key=lambda obj: obj.volume,  # type: ignore
                     reverse=reverse,
                 )
+        else:
+            raise ValueError("Invalid sort_by criteria provided")
 
         return ShapeList(objects)
 
