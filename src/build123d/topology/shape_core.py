@@ -2634,8 +2634,14 @@ class ShapeList(list[T]):
         objects.
 
         Args:
-            sort_by (SortBy, optional): sort criteria. Defaults to SortBy.Z.
+            sort_by (Axis | Callable[[T], K] | Edge | Wire | SortBy, optional): sort criteria.
+               Defaults to Axis.Z.
             reverse (bool, optional): flip order of sort. Defaults to False.
+
+        Raises:
+            ValueError: Cannot sort by an empty axis
+            ValueError: Cannot sort by an empty object
+            ValueError: Invalid sort_by criteria provided
 
         Returns:
             ShapeList: sorted list of objects
