@@ -2117,12 +2117,12 @@ class Shape(NodeMixin, Generic[TOPODS]):
 
         return (vertices, edges)
 
-    def _repr_javascript_(self):
+    def _repr_html_(self):
         """Jupyter 3D representation support"""
 
-        from build123d.jupyter_tools import display
+        from build123d.jupyter_tools import shape_to_html
 
-        return display(self)._repr_javascript_()
+        return shape_to_html(self)._repr_html_()
 
 
 class Comparable(ABC):
