@@ -29,9 +29,11 @@ license:
 import math
 import unittest
 
-from build123d.build_enums import AngularDirection
+from build123d.build_enums import AngularDirection, GeomType, Transition
 from build123d.geometry import Axis, Plane, Vector
 from build123d.objects_curve import CenterArc, EllipticalCenterArc
+from build123d.objects_sketch import Circle, Rectangle, RegularPolygon
+from build123d.operations_generic import sweep
 from build123d.topology import Edge
 
 
@@ -283,6 +285,14 @@ class TestEdge(unittest.TestCase):
     def test_init(self):
         with self.assertRaises(TypeError):
             Edge(direction=(1, 0, 0))
+
+    def test_is_interior(self):
+        path = RegularPolygon(5, 5).face().outer_wire()
+        profile = path.location_at(0) * (Circle(0.6) & Rectangle(2, 1))
+        target = sweep(profile, path, transition=Transition.RIGHT)
+        inside_edges = target.edges().filter_by(lambda e: e.is_interior)
+        self.assertEqual(len(inside_edges), 5)
+        self.assertTrue(all(e.geom_type == GeomType.ELLIPSE for e in inside_edges))
 
 
 if __name__ == "__main__":

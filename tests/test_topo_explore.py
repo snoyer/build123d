@@ -1,6 +1,11 @@
 from typing import Optional
 import unittest
 
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeFace
+from OCP.GProp import GProp_GProps
+from OCP.BRepGProp import BRepGProp
+from OCP.gp import gp_Pnt, gp_Pln
+from OCP.TopoDS import TopoDS_Face, TopoDS_Shape
 from build123d.build_enums import SortBy
 
 from build123d.objects_part import Box
@@ -12,8 +17,11 @@ from build123d.geometry import (
 from build123d.topology import (
     Edge,
     Face,
+    Shell,
     Wire,
+    offset_topods_face,
     topo_explore_connected_edges,
+    topo_explore_connected_faces,
     topo_explore_common_vertex,
 )
 
@@ -78,6 +86,17 @@ class TestTopoExplore(DirectApiTestCase):
         connected_edges = topo_explore_connected_edges(face.edges()[0])
         self.assertEqual(len(connected_edges), 1)
 
+    def test_topo_explore_connected_edges_errors(self):
+        # No parent case
+        with self.assertRaises(ValueError):
+            topo_explore_connected_edges(Edge())
+
+        # Null edge case
+        null_edge = Wire.make_rect(1, 1).edges()[0]
+        null_edge.wrapped = None
+        with self.assertRaises(ValueError):
+            topo_explore_connected_edges(null_edge)
+
     def test_topo_explore_common_vertex(self):
         triangle = Face(
             Wire(
@@ -96,6 +115,71 @@ class TestTopoExplore(DirectApiTestCase):
         self.assertIsNone(
             topo_explore_common_vertex(hypotenuse, Edge.make_line((0, 0), (4, 0)))
         )
+
+
+class TestOffsetTopodsFace(unittest.TestCase):
+    def setUp(self):
+        # Create a simple planar face for testing
+        self.face = Face.make_rect(1, 1).wrapped
+
+    def get_face_center(self, face: TopoDS_Face) -> tuple:
+        """Calculate the center of a face"""
+        props = GProp_GProps()
+        BRepGProp.SurfaceProperties_s(face, props)
+        center = props.CentreOfMass()
+        return (center.X(), center.Y(), center.Z())
+
+    def test_offset_topods_face(self):
+        # Offset the face by a positive amount
+        offset_amount = 1.0
+        original_center = self.get_face_center(self.face)
+        offset_shape = offset_topods_face(self.face, offset_amount)
+        offset_center = self.get_face_center(offset_shape)
+        self.assertIsInstance(offset_shape, TopoDS_Shape)
+        self.assertAlmostEqual(Vector(0, 0, 1), offset_center)
+
+        # Offset the face by a negative amount
+        offset_amount = -1.0
+        offset_shape = offset_topods_face(self.face, offset_amount)
+        offset_center = self.get_face_center(offset_shape)
+        self.assertIsInstance(offset_shape, TopoDS_Shape)
+        self.assertAlmostEqual(Vector(0, 0, -1), offset_center)
+
+    def test_offset_topods_face_zero(self):
+        # Offset the face by zero amount
+        offset_amount = 0.0
+        original_center = self.get_face_center(self.face)
+        offset_shape = offset_topods_face(self.face, offset_amount)
+        offset_center = self.get_face_center(offset_shape)
+        self.assertIsInstance(offset_shape, TopoDS_Shape)
+        self.assertAlmostEqual(Vector(original_center), offset_center)
+
+
+class TestTopoExploreConnectedFaces(unittest.TestCase):
+    def setUp(self):
+        # Create a shell with 4 faces
+        walls = Shell.extrude(Wire.make_rect(1, 1), (0, 0, 1))
+        diagonal = Axis((0, 0, 0), (1, 1, 0))
+
+        # Extract the edge that is connected to two faces
+        self.connected_edge = walls.edges().filter_by(Axis.Z).sort_by(diagonal)[-1]
+
+        # Create an edge that is only connected to one face
+        self.unconnected_edge = Face.make_rect(1, 1).edges()[0]
+
+    def test_topo_explore_connected_faces(self):
+        # Add the edge to the faces
+        faces = topo_explore_connected_faces(self.connected_edge)
+        self.assertEqual(len(faces), 2)
+
+    def test_topo_explore_connected_faces_invalid(self):
+        # Test with an edge that is not connected to two faces
+        with self.assertRaises(RuntimeError):
+            topo_explore_connected_faces(self.unconnected_edge)
+
+        # No parent case
+        with self.assertRaises(ValueError):
+            topo_explore_connected_faces(Edge())
 
 
 if __name__ == "__main__":
