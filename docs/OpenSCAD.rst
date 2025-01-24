@@ -25,7 +25,8 @@ its design philosophy encourages a fundamentally different, often more efficient
 starting with lower-dimensional entities like faces and edges and then transforming them 
 into solids.
 
-### Why Transition Away from CSG?
+Why Transition Away from CSG?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 CSG is a powerful method for creating 3D models, but it has limitations when dealing with 
 complex designs. build123d’s approach offers several advantages:
@@ -75,7 +76,8 @@ using operations such as:
   between shapes.
 - **Sweeping**: Moves a 2D profile along a defined path to create a 3D form.
 
-### Refining the Model
+Refining the Model
+^^^^^^^^^^^^^^^^^^
 
 After creating the initial 3D shape, you can refine the model by adding details or making 
 modifications using build123d's advanced features, such as:
@@ -84,44 +86,87 @@ modifications using build123d's advanced features, such as:
 - **Boolean Operations**: Combine, subtract, or intersect 3D shapes to achieve the desired 
   geometry.
 
-### Example Comparison
+Example Comparison
+^^^^^^^^^^^^^^^^^^
 
 To illustrate the advantages of this approach, compare a simple model in OpenSCAD and 
-build123d:
+build123d of a piece of angle iron:
 
 **OpenSCAD Approach**
 
 .. code-block:: openscad
 
-    // A basic cylinder with a hole
+    $fn = 100; // Increase the resolution for smooth fillets
+
+    // Dimensions
+    length = 100;  // 10 cm long
+    width = 30;    // 3 cm wide
+    thickness = 4; // 4 mm thick
+    fillet = 5;    // 5 mm fillet radius
+    delta = 0.001; // a small number
+
+    // Create the angle iron
     difference() {
-        cylinder(r=10, h=20);
-        translate([0, 0, 5]) cylinder(r=5, h=20);
+        // Outer shape
+        cube([width, length, width], center = false);
+        // Inner shape
+        union() {
+            translate([thickness+fillet,-delta,thickness+fillet])
+                rotate([-90,0,0])
+                    cylinder(length+2*delta, fillet,fillet);
+            translate([thickness,-delta,thickness+fillet])
+                cube([width-thickness,length+2*delta,width-fillet],center=false);
+            translate([thickness+fillet,-delta,thickness])
+                cube([width-fillet,length+2*delta,width-thickness],center=false);
+            
+        }
     }
 
 **build123d Approach**
 
 .. code-block:: python
 
-    from build123d import *
-
-    # In Builder mode
-    with BuildPart() as cylinder_with_hole:
-        with BuildSketch():
-            Circle(10)
-        extrude(amount=20)
-        with BuildSketch(cylinder_with_hole.faces().sort_by(Axis.Z).last):
-            Circle(5)
-        extrude(amount=-15, mode=Mode.SUBTRACT)
-
-    # In Algebra mode
-    cyl = extrude(Circle(10), 20)
-    cyl -= extrude(Plane(cyl.faces().sort_by(Axis.Z)[-1]) * Circle
+    # Builder mode
+    with BuildPart() as angle_iron:
+        with BuildSketch() as profile:
+            Rectangle(3 * CM, 4 * MM, align=Align.MIN)
+            Rectangle(4 * MM, 3 * CM, align=Align.MIN)
+        extrude(amount=10 * CM)
+        fillet(angle_iron.edges().filter_by(lambda e: e.is_interior), 5 * MM)
 
 
-This approach emphasizes creating a 2D profile (such as the **Circle**) and then applying a 
-3D operation (like **extrude**) to achieve the desired result. Topological features of the 
-part under construction are extracted and used as references for adding further details.
+.. code-block:: python
+
+    # Algebra mode
+    profile = Rectangle(3 * CM, 4 * MM, align=Align.MIN)
+    profile += Rectangle(4 * MM, 3 * CM, align=Align.MIN)
+    angle_iron = extrude(profile, 10 * CM)
+    angle_iron = fillet(angle_iron.edges().filter_by(lambda e: e.is_interior), 5 * MM)
+
+.. image:: ./assets/AngleIron.png
+
+OpenSCAD and build123d offer distinct paradigms for creating 3D models, as demonstrated
+by the angle iron example. OpenSCAD relies on Constructive Solid Geometry (CSG) operations, 
+combining and subtracting 3D shapes like cubes and cylinders. Fillets are approximated by 
+manually adding high-resolution cylinders, making adjustments cumbersome and less precise. 
+This static approach can handle simple models but becomes challenging for complex or iterative designs.
+
+In contrast, build123d emphasizes a profile-driven workflow. It starts with a 2D sketch, 
+defining the geometry’s outline, which is then extruded or otherwise transformed into a 
+3D model. Features like fillets are applied dynamically by querying topological elements, 
+such as edges, using intuitive filtering methods. This approach ensures precision and 
+flexibility, making changes straightforward without the need for manual repositioning or realignment.
+
+The build123d methodology is computationally efficient, leveraging mathematical precision 
+for features like fillets. By separating the design into manageable steps—sketching, extruding, 
+and refining—it aligns with traditional CAD practices and enhances readability, modularity, 
+and maintainability. Unlike OpenSCAD, build123d’s dynamic querying of topological features 
+allows for easy updates and adjustments, making it better suited for modern, complex, and 
+iterative design workflows.
+
+In summary, build123d’s sketch-based paradigm and topological querying capabilities provide 
+superior precision, flexibility, and efficiency compared to OpenSCAD’s static, CSG-centric 
+approach, making it a better choice for robust and adaptable CAD modeling.
 
 Tips for Transitioning
 ----------------------
@@ -134,9 +179,17 @@ Tips for Transitioning
   inside or outside fillets and chamfers to vertices and edges of an existing part 
   with precision.
 
+- **Operational Equivalency and Beyond**: Build123d provides equivalents to almost all 
+  features available in OpenSCAD, with the exception of the 3D **minkowski** operation. 
+  However, a 2D equivalent, **make_hull**, is available in build123d. Beyond operational 
+  equivalency, build123d offers a wealth of additional functionality, including advanced 
+  features like topological queries, dynamic filtering, and robust tools for creating complex 
+  geometries. By exploring build123d's extensive operations, you can unlock new possibilities 
+  and take your designs far beyond the capabilities of OpenSCAD.
+
 - **Explore the Documentation**: Dive into build123d’s comprehensive API documentation 
   to unlock its full potential and discover advanced features.
-
+ 
 By shifting your design mindset from solid-based CSG to a profile-driven approach, you 
 can fully harness build123d's capabilities to create precise, efficient, and complex models. 
 Welcome aboard, and happy designing!
