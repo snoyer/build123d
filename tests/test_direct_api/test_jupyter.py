@@ -29,28 +29,28 @@ license:
 import unittest
 
 from build123d.geometry import Vector
-from build123d.jupyter_tools import to_vtkpoly_string, display
+from build123d.jupyter_tools import to_vtkpoly_string, shape_to_html
 from build123d.topology import Solid
 
 
 class TestJupyter(unittest.TestCase):
-    def test_repr_javascript(self):
+    def test_repr_html(self):
         shape = Solid.make_box(1, 1, 1)
 
-        # Test no exception on rendering to js
-        js1 = shape._repr_javascript_()
+        # Test no exception on rendering to html
+        html1 = shape._repr_html_()
 
-        assert "function render" in js1
+        assert "function render" in html1
 
     def test_display_error(self):
         with self.assertRaises(AttributeError):
-            display(Vector())
+            shape_to_html(Vector())
 
         with self.assertRaises(ValueError):
             to_vtkpoly_string("invalid")
 
         with self.assertRaises(ValueError):
-            display("invalid")
+            shape_to_html("invalid")
 
 
 if __name__ == "__main__":
