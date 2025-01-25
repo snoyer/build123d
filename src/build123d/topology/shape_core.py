@@ -2447,7 +2447,10 @@ class ShapeList(list[T]):
         if callable(filter_by):
             predicate = filter_by
         elif isinstance(filter_by, property):
-            predicate = filter_by.__get__
+
+            def predicate(obj):
+                return filter_by.__get__(obj)
+
         elif isinstance(filter_by, Axis):
             predicate = axis_parallel_predicate(filter_by, tolerance=tolerance)
         elif isinstance(filter_by, Plane):
