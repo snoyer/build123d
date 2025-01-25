@@ -2351,7 +2351,7 @@ class ShapeList(list[T]):
 
     def filter_by(
         self,
-        filter_by: ShapePredicate | Axis | Plane | GeomType,
+        filter_by: ShapePredicate | Axis | Plane | GeomType | property,
         reverse: bool = False,
         tolerance: float = 1e-5,
     ) -> ShapeList[T]:
@@ -2446,6 +2446,8 @@ class ShapeList(list[T]):
         # convert input to callable predicate
         if callable(filter_by):
             predicate = filter_by
+        elif isinstance(filter_by, property):
+            predicate = filter_by.__get__
         elif isinstance(filter_by, Axis):
             predicate = axis_parallel_predicate(filter_by, tolerance=tolerance)
         elif isinstance(filter_by, Plane):
@@ -2524,7 +2526,9 @@ class ShapeList(list[T]):
 
     def group_by(
         self,
-        group_by: Callable[[Shape], K] | Axis | Edge | Wire | SortBy = Axis.Z,
+        group_by: (
+            Callable[[Shape], K] | Axis | Edge | Wire | SortBy | property
+        ) = Axis.Z,
         reverse=False,
         tol_digits=6,
     ) -> GroupBy[T, K]:
@@ -2593,6 +2597,9 @@ class ShapeList(list[T]):
 
         elif callable(group_by):
             key_f = group_by
+
+        elif isinstance(group_by, property):
+            key_f = group_by.__get__
 
         else:
             raise ValueError(f"Unsupported group_by function: {group_by}")
