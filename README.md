@@ -21,11 +21,11 @@ Build123d is a python-based, parametric, [boundary representation (BREP)][BREP] 
 
 Build123d could be considered as an evolution of [CadQuery] where the somewhat restrictive Fluent API (method chaining) is replaced with stateful context managers - e.g. `with` blocks - thus enabling the full python toolbox: for loops, references to objects, object sorting and filtering, etc.
 
-The documentation for **build123d** can found at [readthedocs](https://build123d.readthedocs.io/en/latest/index.html).
+The documentation for **build123d** can be found at [readthedocs](https://build123d.readthedocs.io/en/latest/index.html).
 
 There is a [***Discord***](https://discord.com/invite/Bj9AQPsCfx) server (shared with [CadQuery]) where you can ask for help in the build123d channel.
 
-The recommended method for most users is to install **build123d** is:
+The recommended method for most users to install **build123d** is:
 
 ```
 pip install build123d
