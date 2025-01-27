@@ -17,13 +17,13 @@
 [![Downloads/month](https://pepy.tech/badge/build123d/month)](https://pepy.tech/project/build123d)
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/build123d.svg)](https://pypi.org/project/build123d/)
 
-Build123d is a python-based, parametric, boundary representation (BREP) modeling framework for 2D and 3D CAD. It's built on the Open Cascade geometric kernel and allows for the creation of complex models using a simple and intuitive python syntax. Build123d can be used to create models for 3D printing, CNC machining, laser cutting, and other manufacturing processes.  Models can be exported to a wide variety of popular CAD tools such as FreeCAD and SolidWorks.
+Build123d is a python-based, parametric, [boundary representation (BREP)][BREP] modeling framework for 2D and 3D CAD. It's built on the [Open Cascade] geometric kernel and allows for the creation of complex models using a simple and intuitive python syntax. Build123d can be used to create models for 3D printing, CNC machining, laser cutting, and other manufacturing processes.  Models can be exported to a wide variety of popular CAD tools such as [FreeCAD] and SolidWorks.
 
-Build123d could be considered as an evolution of [CadQuery](https://cadquery.readthedocs.io/en/latest/index.html) where the somewhat restrictive Fluent API (method chaining) is replaced with stateful context managers - e.g. `with` blocks - thus enabling the full python toolbox: for loops, references to objects, object sorting and filtering, etc.
+Build123d could be considered as an evolution of [CadQuery] where the somewhat restrictive Fluent API (method chaining) is replaced with stateful context managers - e.g. `with` blocks - thus enabling the full python toolbox: for loops, references to objects, object sorting and filtering, etc.
 
 The documentation for **build123d** can found at [readthedocs](https://build123d.readthedocs.io/en/latest/index.html).
 
-There is a [***Discord***](https://discord.com/invite/Bj9AQPsCfx) server (shared with CadQuery) where you can ask for help in the build123d channel.
+There is a [***Discord***](https://discord.com/invite/Bj9AQPsCfx) server (shared with [CadQuery]) where you can ask for help in the build123d channel.
 
 The recommended method for most users is to install **build123d** is:
 ```
@@ -54,3 +54,8 @@ python3 -m pip install -e .
 ```
 
 Further installation instructions are available (e.g. Poetry) see the [installation section on readthedocs](https://build123d.readthedocs.io/en/latest/installation.html).
+
+[BREP]: https://en.wikipedia.org/wiki/Boundary_representation
+[CadQuery]: https://cadquery.readthedocs.io/en/latest/index.html
+[FreeCAD]: https://www.freecad.org/
+[Open Cascade]: https://dev.opencascade.org/
