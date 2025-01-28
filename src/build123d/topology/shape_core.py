@@ -2635,7 +2635,7 @@ class ShapeList(list[T]):
 
     def sort_by(
         self,
-        sort_by: Axis | Callable[[T], K] | Edge | Wire | SortBy = Axis.Z,
+        sort_by: Axis | Callable[[T], K] | Edge | Wire | SortBy | property = Axis.Z,
         reverse: bool = False,
     ) -> ShapeList[T]:
         """sort by
@@ -2660,6 +2660,9 @@ class ShapeList(list[T]):
         if callable(sort_by):
             # If a callable is provided, use it directly as the key
             objects = sorted(self, key=sort_by, reverse=reverse)
+
+        elif isinstance(sort_by, property):
+            objects = sorted(self, key=sort_by.__get__, reverse=reverse)
 
         elif isinstance(sort_by, Axis):
             if sort_by.wrapped is None:

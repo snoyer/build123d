@@ -90,10 +90,12 @@ class TestShapeList(unittest.TestCase):
         self.assertAlmostEqual(largest.area, math.pi * 2**2, 5)
 
     def test_sort_by_property(self):
-        box1 = Box(2, 2, 2)
-        box2 = Box(2, 2, 2).translate((1, 1, 1))
-        assert len((box1 + box2).edges().filter_by(Edge.is_interior)) == 6
-        assert len((box1 - box2).edges().filter_by(Edge.is_interior)) == 3
+        box1 = Box(1, 1, 1)
+        box2 = Box(2, 2, 2)
+        box3 = Box(3, 3, 3)
+        unsorted_boxes = ShapeList([box2, box3, box1])
+        assert unsorted_boxes.sort_by(Solid.volume) == [box1, box2, box3]
+        assert unsorted_boxes.sort_by(Solid.volume, reverse=True) == [box3, box2, box1]
 
     def test_sort_by_invalid(self):
         with self.assertRaises(ValueError):
@@ -124,6 +126,12 @@ class TestShapeList(unittest.TestCase):
 
         self.assertEqual(len(shapelist.filter_by(lambda s: s.label == "A")), 2)
         self.assertEqual(len(shapelist.filter_by(lambda s: s.label == "B")), 1)
+
+    def test_filter_by_property(self):
+        box1 = Box(2, 2, 2)
+        box2 = Box(2, 2, 2).translate((1, 1, 1))
+        assert len((box1 + box2).edges().filter_by(Edge.is_interior)) == 6
+        assert len((box1 - box2).edges().filter_by(Edge.is_interior)) == 3
 
     def test_first_last(self):
         vertices = (
