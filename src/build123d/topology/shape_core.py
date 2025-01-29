@@ -450,6 +450,48 @@ class Shape(NodeMixin, Generic[TOPODS]):
             self.wrapped.Location(value.wrapped)
 
     @property
+    def matrix_of_inertia(self) -> list[list[float]]:
+        """
+        Compute the inertia matrix (moment of inertia tensor) of the shape.
+
+        The inertia matrix represents how the mass of the shape is distributed
+        with respect to its reference frame. It is a 3×3 symmetric tensor that
+        describes the resistance of the shape to rotational motion around
+        different axes.
+
+        Returns:
+            list[list[float]]: A 3×3 nested list representing the inertia matrix.
+            The elements of the matrix are given as:
+
+            | Ixx  Ixy  Ixz |
+            | Ixy  Iyy  Iyz |
+            | Ixz  Iyz  Izz |
+
+            where:
+            - Ixx, Iyy, Izz are the moments of inertia about the X, Y, and Z axes.
+            - Ixy, Ixz, Iyz are the products of inertia.
+
+        Example:
+            >>> obj = MyShape()
+            >>> obj.matrix_of_inertia
+            [[1000.0, 50.0, 0.0],
+            [50.0, 1200.0, 0.0],
+            [0.0, 0.0, 300.0]]
+
+        Notes:
+            - The inertia matrix is computed relative to the shape's center of mass.
+            - It is commonly used in structural analysis, mechanical simulations,
+              and physics-based motion calculations.
+        """
+        properties = GProp_GProps()
+        BRepGProp.VolumeProperties_s(self.wrapped, properties)
+        inertia_matrix = properties.MatrixOfInertia()
+        matrix = []
+        for i in range(3):
+            matrix.append([inertia_matrix.Value(i + 1, j + 1) for j in range(3)])
+        return matrix
+
+    @property
     def orientation(self) -> Vector | None:
         """Get the orientation component of this Shape's Location"""
         if self.location is None:
@@ -478,6 +520,59 @@ class Shape(NodeMixin, Generic[TOPODS]):
         if loc is not None:
             loc.position = Vector(value)
             self.location = loc
+
+    @property
+    def principal_properties(self) -> list[tuple[Vector, float]]:
+        """
+        Compute the principal moments of inertia and their corresponding axes.
+
+        Returns:
+            list[tuple[Vector, float]]: A list of tuples, where each tuple contains:
+            - A `Vector` representing the axis of inertia.
+            - A `float` representing the moment of inertia for that axis.
+
+        Example:
+            >>> obj = MyShape()
+            >>> obj.principal_properties
+            [(Vector(1, 0, 0), 1200.0),
+            (Vector(0, 1, 0), 1000.0),
+            (Vector(0, 0, 1), 300.0)]
+        """
+        properties = GProp_GProps()
+        BRepGProp.VolumeProperties_s(self.wrapped, properties)
+        principal_props = properties.PrincipalProperties()
+        principal_moments = principal_props.Moments()
+        return [
+            (Vector(principal_props.FirstAxisOfInertia()), principal_moments[0]),
+            (Vector(principal_props.SecondAxisOfInertia()), principal_moments[1]),
+            (Vector(principal_props.ThirdAxisOfInertia()), principal_moments[2]),
+        ]
+
+    @property
+    def static_moments(self) -> tuple[float, float, float]:
+        """
+        Compute the static moments (first moments of mass) of the shape.
+
+        The static moments represent the weighted sum of the coordinates
+        with respect to the mass distribution, providing insight into the
+        center of mass and mass distribution of the shape.
+
+        Returns:
+            tuple[float, float, float]: The static moments (Mx, My, Mz),
+            where:
+            - Mx is the first moment of mass about the YZ plane.
+            - My is the first moment of mass about the XZ plane.
+            - Mz is the first moment of mass about the XY plane.
+
+        Example:
+            >>> obj = MyShape()
+            >>> obj.static_moments
+            (150.0, 200.0, 50.0)
+
+        """
+        properties = GProp_GProps()
+        BRepGProp.VolumeProperties_s(self.wrapped, properties)
+        return properties.StaticMoments()
 
     # ---- Class Methods ----
 
@@ -1485,6 +1580,37 @@ class Shape(NodeMixin, Generic[TOPODS]):
         logger.debug("finished projecting '%d' faces", len(faces))
 
         return ShapeList(projected_faces)
+
+    def radius_of_gyration(self, axis: Axis) -> float:
+        """
+        Compute the radius of gyration of the shape about a given axis.
+
+        The radius of gyration represents the distance from the axis at which the entire
+        mass of the shape could be concentrated without changing its moment of inertia.
+        It provides insight into how mass is distributed relative to the axis and is
+        useful in structural analysis, rotational dynamics, and mechanical simulations.
+
+        Args:
+            axis (Axis): The axis about which the radius of gyration is computed.
+                        The axis should be defined in the same coordinate system
+                        as the shape.
+
+        Returns:
+            float: The radius of gyration in the same units as the shape's dimensions.
+
+        Example:
+            >>> obj = MyShape()
+            >>> axis = Axis((0, 0, 0), (0, 0, 1))
+            >>> obj.radius_of_gyration(axis)
+            5.47
+
+        Notes:
+            - The radius of gyration is computed based on the shape’s mass properties.
+            - It is useful for evaluating structural stability and rotational behavior.
+        """
+        properties = GProp_GProps()
+        BRepGProp.VolumeProperties_s(self.wrapped, properties)
+        return properties.RadiusOfGyration(axis.wrapped)
 
     def relocate(self, loc: Location):
         """Change the location of self while keeping it geometrically similar
