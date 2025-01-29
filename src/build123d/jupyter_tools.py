@@ -28,42 +28,15 @@ from json import dumps
 import os
 import uuid
 from string import Template
-from typing import Any, Dict, List
+from typing import Any
 from IPython.display import HTML
-from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
+from build123d.vtk_tools import to_vtkpoly_string
 
 DEFAULT_COLOR = [1, 0.8, 0, 1]
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 with open(os.path.join(dir_path, "template_render.js"), encoding="utf-8") as f:
     TEMPLATE_JS = f.read()
-
-
-def to_vtkpoly_string(
-    shape: Any, tolerance: float = 1e-3, angular_tolerance: float = 0.1
-) -> str:
-    """to_vtkpoly_string
-
-    Args:
-        shape (Shape): object to convert
-        tolerance (float, optional): Defaults to 1e-3.
-        angular_tolerance (float, optional): Defaults to 0.1.
-
-    Raises:
-        ValueError: not a valid Shape
-
-    Returns:
-        str: vtkpoly str
-    """
-    if not hasattr(shape, "wrapped"):
-        raise ValueError(f"Type {type(shape)} is not supported")
-
-    writer = vtkXMLPolyDataWriter()
-    writer.SetWriteToOutputString(True)
-    writer.SetInputData(shape.to_vtk_poly_data(tolerance, angular_tolerance, True))
-    writer.Write()
-
-    return writer.GetOutputString()
 
 
 def shape_to_html(shape: Any) -> HTML:
