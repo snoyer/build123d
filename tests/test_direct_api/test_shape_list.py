@@ -89,6 +89,14 @@ class TestShapeList(unittest.TestCase):
         self.assertAlmostEqual(smallest.area, math.pi * 1**2, 5)
         self.assertAlmostEqual(largest.area, math.pi * 2**2, 5)
 
+    def test_sort_by_property(self):
+        box1 = Box(1, 1, 1)
+        box2 = Box(2, 2, 2)
+        box3 = Box(3, 3, 3)
+        unsorted_boxes = ShapeList([box2, box3, box1])
+        assert unsorted_boxes.sort_by(Solid.volume) == [box1, box2, box3]
+        assert unsorted_boxes.sort_by(Solid.volume, reverse=True) == [box3, box2, box1]
+
     def test_sort_by_invalid(self):
         with self.assertRaises(ValueError):
             Solid.make_box(1, 1, 1).faces().sort_by(">Z")
@@ -118,6 +126,12 @@ class TestShapeList(unittest.TestCase):
 
         self.assertEqual(len(shapelist.filter_by(lambda s: s.label == "A")), 2)
         self.assertEqual(len(shapelist.filter_by(lambda s: s.label == "B")), 1)
+
+    def test_filter_by_property(self):
+        box1 = Box(2, 2, 2)
+        box2 = Box(2, 2, 2).translate((1, 1, 1))
+        assert len((box1 + box2).edges().filter_by(Edge.is_interior)) == 6
+        assert len((box1 - box2).edges().filter_by(Edge.is_interior)) == 3
 
     def test_first_last(self):
         vertices = (
@@ -186,6 +200,17 @@ class TestShapeList(unittest.TestCase):
         result = shapelist.group_by(lambda shape: shape.label)
 
         self.assertEqual([len(group) for group in result], [1, 3, 2])
+
+    def test_group_by_property(self):
+        box1 = Box(2, 2, 2)
+        box2 = Box(2, 2, 2).translate((1, 1, 1))
+        g1 = (box1 + box2).edges().group_by(Edge.is_interior)
+        assert len(g1.group(True)) == 6
+        assert len(g1.group(False)) == 24
+
+        g2 = (box1 - box2).edges().group_by(Edge.is_interior)
+        assert len(g2.group(True)) == 3
+        assert len(g2.group(False)) == 18
 
     def test_group_by_retrieve_groups(self):
         boxesA = [Solid.make_box(1, 1, 1) for _ in range(3)]
