@@ -29,6 +29,7 @@ license:
 import unittest
 
 from build123d.topology import Solid
+from build123d.vtk_tools import to_vtk_poly_data
 from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkTriangleFilter
 
@@ -40,8 +41,8 @@ class TestVTKPolyData(unittest.TestCase):
 
     def test_to_vtk_poly_data(self):
         # Generate VTK data
-        vtk_data = self.object_under_test.to_vtk_poly_data(
-            tolerance=0.1, angular_tolerance=0.2, normals=True
+        vtk_data = to_vtk_poly_data(
+            self.object_under_test, tolerance=0.1, angular_tolerance=0.2, normals=True
         )
 
         # Verify the result is of type vtkPolyData
@@ -78,7 +79,7 @@ class TestVTKPolyData(unittest.TestCase):
         # Test handling of empty shape
         empty_object = Solid()  # Create an empty object
         with self.assertRaises(ValueError) as context:
-            empty_object.to_vtk_poly_data()
+            to_vtk_poly_data(empty_object)
 
         self.assertEqual(str(context.exception), "Cannot convert an empty shape")
 

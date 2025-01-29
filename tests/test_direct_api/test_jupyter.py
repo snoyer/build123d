@@ -29,7 +29,8 @@ license:
 import unittest
 
 from build123d.geometry import Vector
-from build123d.jupyter_tools import to_vtkpoly_string, shape_to_html
+from build123d.jupyter_tools import shape_to_html
+from build123d.vtk_tools import to_vtkpoly_string
 from build123d.topology import Solid
 
 
@@ -43,7 +44,7 @@ class TestJupyter(unittest.TestCase):
         assert "function render" in html1
 
     def test_display_error(self):
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
             shape_to_html(Vector())
 
         with self.assertRaises(ValueError):
