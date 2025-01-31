@@ -123,6 +123,26 @@ class TestAxis(unittest.TestCase):
         self.assertTrue(Axis.X.is_parallel(Axis((1, 1, 1), (1, 0, 0))))
         self.assertFalse(Axis.X.is_parallel(Axis.Y))
 
+    def test_axis_is_skew(self):
+        self.assertTrue(Axis.X.is_skew(Axis((0, 1, 1), (0, 0, 1))))
+        self.assertFalse(Axis.X.is_skew(Axis.Y))
+
+    def test_axis_is_skew(self):
+        # Skew Axes
+        self.assertTrue(Axis.X.is_skew(Axis((0, 1, 1), (0, 0, 1))))
+
+        # Perpendicular but intersecting
+        self.assertFalse(Axis.X.is_skew(Axis.Y))
+
+        # Parallel coincident axes
+        self.assertFalse(Axis.X.is_skew(Axis.X))
+
+        # Parallel but distinct axes
+        self.assertTrue(Axis.X.is_skew(Axis((0, 1, 0), (1, 0, 0))))
+
+        # Coplanar but not intersecting
+        self.assertTrue(Axis((0, 0, 0), (1, 1, 0)).is_skew(Axis((0, 1, 0), (1, 1, 0))))
+
     def test_axis_angle_between(self):
         self.assertAlmostEqual(Axis.X.angle_between(Axis.Y), 90, 5)
         self.assertAlmostEqual(
@@ -154,6 +174,9 @@ class TestAxis(unittest.TestCase):
 
         i = Axis.X & Axis((1, 0, 0), (1, 0, 0))
         self.assertEqual(i, Axis.X)
+
+        # Skew case
+        self.assertIsNone(Axis.X.intersect(Axis((0, 1, 1), (0, 0, 1))))
 
         intersection = Axis((1, 2, 3), (0, 0, 1)) & Plane.XY
         self.assertAlmostEqual(intersection.to_tuple(), (1, 2, 0), 5)

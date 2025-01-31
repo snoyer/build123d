@@ -780,6 +780,43 @@ class Axis(metaclass=AxisMeta):
         """
         return self.wrapped.IsParallel(other.wrapped, angular_tolerance * (pi / 180))
 
+    def is_skew(self, other: Axis, tolerance: float = 1e-5) -> bool:
+        """are axes skew
+
+        Returns True if this axis and another axis are skew, meaning they are neither
+        parallel nor coplanar. Two axes are skew if they do not lie in the same plane
+        and never intersect.
+
+        Mathematically, this means:
+        - The axes are **not parallel** (the cross product of their direction vectors
+          is nonzero).
+        - The axes are **not coplanar** (the vector between their positions is not
+          aligned with the plane spanned by their directions).
+
+        If either condition is false (i.e., the axes are parallel or coplanar), they are
+        not skew.
+
+        Args:
+            other (Axis): axis to compare to
+            tolerance (float, optional): max deviation. Defaults to 1e-5.
+
+        Returns:
+            bool: axes are skew
+        """
+        if self.is_parallel(other, tolerance):
+            # If parallel, check if they are coincident
+            parallel_offset = (self.position - other.position).cross(self.direction)
+            # True if distinct, False if coincident
+            return parallel_offset.length > tolerance
+
+        # Compute the determinant
+        coplanarity = (self.position - other.position).dot(
+            self.direction.cross(other.direction)
+        )
+
+        # If determinant is near zero, they are coplanar; otherwise, they are skew
+        return abs(coplanarity) > tolerance
+
     def angle_between(self, other: Axis) -> float:
         """calculate angle between axes
 
@@ -830,37 +867,29 @@ class Axis(metaclass=AxisMeta):
         if axis is not None:
             if self.is_coaxial(axis):
                 return self
-            else:
-                # Extract points and directions to numpy arrays
-                p1 = np.array([*self.position])
-                d1 = np.array([*self.direction])
-                p2 = np.array([*axis.position])
-                d2 = np.array([*axis.direction])
 
-                # Compute the cross product of directions
-                cross_d1_d2 = np.cross(d1, d2)
-                cross_d1_d2_norm = np.linalg.norm(cross_d1_d2)
+            if self.is_skew(axis):
+                return None
 
-                if cross_d1_d2_norm < TOLERANCE:
-                    # The directions are parallel
-                    return None
+            # Extract points and directions to numpy arrays
+            p1 = np.array([*self.position])
+            d1 = np.array([*self.direction])
+            p2 = np.array([*axis.position])
+            d2 = np.array([*axis.direction])
 
-                # Solve the system of equations to find the intersection
-                system_of_equations = np.array([d1, -d2, cross_d1_d2]).T
-                origin_diff = p2 - p1
-                try:
-                    t1, t2, _ = np.linalg.solve(system_of_equations, origin_diff)
-                except np.linalg.LinAlgError:
-                    return None  # The lines do not intersect
+            # Solve the system of equations to find the intersection
+            system_of_equations = np.array([d1, -d2, np.cross(d1, d2)]).T
+            origin_diff = p2 - p1
+            t1, t2, _ = np.linalg.lstsq(system_of_equations, origin_diff, rcond=None)[0]
 
-                # Calculate the intersection point
-                intersection_point = p1 + t1 * d1
-                return Vector(*intersection_point)
+            # Calculate the intersection point
+            intersection_point = p1 + t1 * d1
+            return Vector(*intersection_point)
 
-        elif plane is not None:
+        if plane is not None:
             return plane.intersect(self)
 
-        elif vector is not None:
+        if vector is not None:
             # Create a vector from the origin to the point
             vec_to_point = vector - self.position
 
@@ -872,7 +901,7 @@ class Axis(metaclass=AxisMeta):
             if vector == projected_vec:
                 return vector
 
-        elif location is not None:
+        if location is not None:
             # Find the "direction" of the location
             location_dir = Plane(location).z_dir
 
@@ -883,7 +912,7 @@ class Axis(metaclass=AxisMeta):
             ):
                 return location
 
-        elif shape is not None:
+        if shape is not None:
             return shape.intersect(self)
 
 
