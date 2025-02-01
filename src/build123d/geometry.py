@@ -558,17 +558,17 @@ class AxisMeta(type):
     @property
     def X(cls) -> Axis:
         """X Axis"""
-        return Axis((0, 0, 0), (1, 0, 0))
+        return cls((0, 0, 0), (1, 0, 0))
 
     @property
     def Y(cls) -> Axis:
         """Y Axis"""
-        return Axis((0, 0, 0), (0, 1, 0))
+        return cls((0, 0, 0), (0, 1, 0))
 
     @property
     def Z(cls) -> Axis:
         """Z Axis"""
-        return Axis((0, 0, 0), (0, 0, 1))
+        return cls((0, 0, 0), (0, 0, 1))
 
 
 class Axis(metaclass=AxisMeta):
@@ -690,7 +690,7 @@ class Axis(metaclass=AxisMeta):
 
     def __str__(self) -> str:
         """Display self"""
-        return f"Axis: ({self.position.to_tuple()},{self.direction.to_tuple()})"
+        return f"{type(self).__name__}: ({self.position.to_tuple()},{self.direction.to_tuple()})"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Axis):
@@ -833,7 +833,7 @@ class Axis(metaclass=AxisMeta):
 
     def reverse(self) -> Axis:
         """Return a copy of self with the direction reversed"""
-        return Axis(self.wrapped.Reversed())
+        return type(self)(self.wrapped.Reversed())
 
     def __neg__(self) -> Axis:
         """Flip direction operator -"""
