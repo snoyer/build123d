@@ -98,7 +98,7 @@ from OCP.BRepGProp import BRepGProp, BRepGProp_Face
 from OCP.BRepIntCurveSurface import BRepIntCurveSurface_Inter
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.BRepTools import BRepTools
-from OCP.Bnd import Bnd_Box
+from OCP.Bnd import Bnd_Box, Bnd_OBB
 from OCP.GProp import GProp_GProps
 from OCP.Geom import Geom_Line
 from OCP.GeomAPI import GeomAPI_ProjectPointOnSurf
@@ -139,6 +139,7 @@ from build123d.geometry import (
     Color,
     Location,
     Matrix,
+    OrientedBoundBox,
     Plane,
     Vector,
     VectorLike,
@@ -1502,6 +1503,16 @@ class Shape(NodeMixin, Generic[TOPODS]):
         shape_copy: Shape = copy.deepcopy(self, None)
         shape_copy.wrapped = tcast(TOPODS, downcast(self.wrapped.Moved(loc.wrapped)))
         return shape_copy
+
+    def oriented_bounding_box(self) -> OrientedBoundBox:
+        """Create an oriented bounding box for this Shape.
+
+        Returns:
+            OrientedBoundBox: A box oriented and sized to contain this Shape
+        """
+        if self.wrapped is None:
+            return OrientedBoundBox(Bnd_OBB())
+        return OrientedBoundBox(self)
 
     def project_faces(
         self,

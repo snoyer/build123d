@@ -127,6 +127,7 @@ __all__ = [
     "Wedge",
     # Direct API Classes
     "BoundBox",
+    "OrientedBoundBox",
     "Rotation",
     "Rot",
     "Pos",

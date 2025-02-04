@@ -1724,6 +1724,164 @@ class LocationEncoder(json.JSONEncoder):
         return obj
 
 
+class OrientedBoundBox:
+    """
+    An Oriented Bounding Box
+
+    This class computes the oriented bounding box for a given build123d shape.
+    It exposes properties such as the center, principal axis directions, the
+    extents along these axes, and the full diagonal length of the box.
+    """
+
+    def __init__(self, shape: Bnd_OBB | Shape):
+        """
+        Create an oriented bounding box from either a precomputed Bnd_OBB or
+        a build123d Shape (which wraps a TopoDS_Shape).
+
+        Args:
+            shape (Bnd_OBB | Shape): Either a precomputed Bnd_OBB or a build123d shape
+                from which to compute the oriented bounding box.
+        """
+        if isinstance(shape, Bnd_OBB):
+            obb = shape
+        else:
+            obb = Bnd_OBB()
+            # Compute the oriented bounding box for the shape.
+            BRepBndLib.AddOBB_s(shape.wrapped, obb, True)
+        self.wrapped = obb
+
+    @property
+    def diagonal(self) -> float:
+        """
+        The full length of the body diagonal of the oriented bounding box,
+        which represents the maximum size of the object.
+
+        Returns:
+            float: The diagonal length.
+        """
+        if self.wrapped is None:
+            return 0.0
+        return self.wrapped.SquareExtent() ** 0.5
+
+    @property
+    def plane(self) -> Plane:
+        """
+        The oriented coordinate system of the bounding box.
+
+        Returns:
+            Plane: The coordinate system defined by the center and primary
+                   (X) and tertiary (Z) directions of the bounding box.
+        """
+        return Plane(
+            origin=self.center(), x_dir=self.x_direction, z_dir=self.z_direction
+        )
+
+    @property
+    def size(self) -> Vector:
+        """
+        The full extents of the bounding box along its primary axes.
+
+        Returns:
+            Vector: The oriented size (full dimensions) of the box.
+        """
+        return (
+            Vector(self.wrapped.XHSize(), self.wrapped.YHSize(), self.wrapped.ZHSize())
+            * 2.0
+        )
+
+    @property
+    def x_direction(self) -> Vector:
+        """
+        The primary (X) direction of the oriented bounding box.
+
+        Returns:
+            Vector: The X direction as a unit vector.
+        """
+        x_direction_xyz = self.wrapped.XDirection()
+        coords = [getattr(x_direction_xyz, attr)() for attr in ("X", "Y", "Z")]
+        return Vector(*coords)
+
+    @property
+    def y_direction(self) -> Vector:
+        """
+        The secondary (Y) direction of the oriented bounding box.
+
+        Returns:
+            Vector: The Y direction as a unit vector.
+        """
+        y_direction_xyz = self.wrapped.YDirection()
+        coords = [getattr(y_direction_xyz, attr)() for attr in ("X", "Y", "Z")]
+        return Vector(*coords)
+
+    @property
+    def z_direction(self) -> Vector:
+        """
+        The tertiary (Z) direction of the oriented bounding box.
+
+        Returns:
+            Vector: The Z direction as a unit vector.
+        """
+        z_direction_xyz = self.wrapped.ZDirection()
+        coords = [getattr(z_direction_xyz, attr)() for attr in ("X", "Y", "Z")]
+        return Vector(*coords)
+
+    def center(self) -> Vector:
+        """
+        Compute and return the center point of the oriented bounding box.
+
+        Returns:
+            Vector: The center point of the box.
+        """
+        center_xyz = self.wrapped.Center()
+        coords = [getattr(center_xyz, attr)() for attr in ("X", "Y", "Z")]
+        return Vector(*coords)
+
+    def is_completely_inside(self, other: OrientedBoundBox) -> bool:
+        """
+        Determine whether the given oriented bounding box is entirely contained
+        within this bounding box.
+
+        This method checks that every point of 'other' lies strictly within the
+        boundaries of this box, according to the tolerance criteria inherent to the
+        underlying OCCT implementation.
+
+        Args:
+            other (OrientedBoundBox): The bounding box to test for containment.
+
+        Raises:
+            ValueError: If the 'other' bounding box has an uninitialized (null) underlying geometry.
+
+        Returns:
+            bool: True if 'other' is completely inside this bounding box; otherwise, False.
+        """
+        if other.wrapped is None:
+            raise ValueError("Can't compare to a null obb")
+        return self.wrapped.IsCompletelyInside(other.wrapped)
+
+    def is_outside(self, point: Vector) -> bool:
+        """
+        Determine whether a given point lies entirely outside this oriented bounding box.
+
+        A point is considered outside if it is neither inside the box nor on its surface,
+        based on the criteria defined by the OCCT implementation.
+
+        Args:
+            point (Vector): The point to test.
+
+        Raises:
+            ValueError: If the point's underlying geometry is not set (null).
+
+        Returns:
+            bool: True if the point is completely outside the bounding box; otherwise, False.
+        """
+        if point.wrapped is None:
+            raise ValueError("Can't compare to a null point")
+        return self.wrapped.IsOut(point.to_pnt())
+
+    def __repr__(self) -> str:
+        return f"OrientedBoundBox(center={self.center()}, size={self.size}, plane={self.plane})"
+
+
 class Rotation(Location):
     """Subclass of Location used only for object rotation
 
