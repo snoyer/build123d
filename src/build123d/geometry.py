@@ -1731,6 +1731,9 @@ class OrientedBoundBox:
     This class computes the oriented bounding box for a given build123d shape.
     It exposes properties such as the center, principal axis directions, the
     extents along these axes, and the full diagonal length of the box.
+
+    Note: The axes of the oriented bounding box are arbitary and may not be
+    consistent across platforms or time.
     """
 
     def __init__(self, shape: Bnd_OBB | Shape):
