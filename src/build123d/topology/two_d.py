@@ -73,7 +73,7 @@ from OCP.BRepFilletAPI import BRepFilletAPI_MakeFillet2d
 from OCP.BRepGProp import BRepGProp, BRepGProp_Face
 from OCP.BRepIntCurveSurface import BRepIntCurveSurface_Inter
 from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeFilling, BRepOffsetAPI_MakePipeShell
-from OCP.BRepTools import BRepTools
+from OCP.BRepTools import BRepTools, BRepTools_ReShape
 from OCP.GProp import GProp_GProps
 from OCP.Geom import Geom_BezierSurface, Geom_Surface
 from OCP.GeomAPI import GeomAPI_PointsToBSplineSurface, GeomAPI_ProjectPointOnSurf
@@ -404,6 +404,23 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
             face_vertices = flat_face.vertices().sort_by(Axis.X)
             result = face_vertices[-1].X - face_vertices[0].X
         return result
+
+    @property
+    def total_area(self) -> float:
+        """
+        Calculate the total surface area of the face, including the areas of any holes.
+
+        This property returns the overall area of the face as if the inner boundaries (holes)
+        were filled in.
+
+        Returns:
+            float: The total surface area, including the area of holes. Returns 0.0 if
+            the face is empty.
+        """
+        if self.wrapped is None:
+            return 0.0
+
+        return self.remove_holes().area
 
     @property
     def volume(self) -> float:
@@ -1200,6 +1217,28 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
             else:
                 projected_shapes.append(shape)
         return projected_shapes
+
+    def remove_holes(self) -> Face:
+        """remove_holes
+
+        Remove all of the holes from this face.
+
+        Returns:
+            Face: A new Face instance identical to the original but without any holes.
+        """
+        if self.wrapped is None:
+            raise ValueError("Cannot remove holes from an empty face")
+
+        if not (inner_wires := self.inner_wires()):
+            return self
+
+        holeless = copy.deepcopy(self)
+        reshaper = BRepTools_ReShape()
+        for hole_wire in inner_wires:
+            reshaper.Remove(hole_wire.wrapped)
+        modified_shape = downcast(reshaper.Apply(self.wrapped))
+        holeless.wrapped = modified_shape
+        return holeless
 
     def to_arcs(self, tolerance: float = 1e-3) -> Face:
         """to_arcs
