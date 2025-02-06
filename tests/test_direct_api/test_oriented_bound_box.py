@@ -30,7 +30,7 @@ import math
 import re
 import unittest
 
-from build123d.geometry import Location, OrientedBoundBox, Plane, Pos, Rot, Vector
+from build123d.geometry import Axis, Location, OrientedBoundBox, Plane, Pos, Rot, Vector
 from build123d.topology import Edge, Face, Solid
 from build123d.objects_part import Box
 from build123d.objects_sketch import Polygon
@@ -131,14 +131,17 @@ class TestOrientedBoundBox(unittest.TestCase):
         self.assertAlmostEqual(center1.Z, center2.Z, places=6)
 
     def test_plane(self):
-        """Orientation of plan may not be consistent across platforms"""
+        # Note: Orientation of plan may not be consistent across platforms
         rect = Rot(Z=10) * Face.make_rect(1, 2)
         obb = rect.oriented_bounding_box()
         pln = obb.plane
-        # self.assertAlmostEqual(
-        #     abs(pln.x_dir.dot(Vector(0, 1, 0).rotate(Axis.Z, 10))), 1.0, places=6
-        # )
         self.assertAlmostEqual(abs(pln.z_dir.dot(Vector(0, 0, 1))), 1.0, places=6)
+        self.assertTrue(
+            any(
+                abs(d.dot(Vector(1, 0).rotate(Axis.Z, 10))) > 0.999
+                for d in [pln.x_dir, pln.y_dir, pln.z_dir]
+            )
+        )
 
     def test_repr(self):
         # Create a simple unit cube OBB.
