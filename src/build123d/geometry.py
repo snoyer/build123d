@@ -1138,8 +1138,8 @@ class Color:
         """Color from a hexadecimal color code with an optional alpha value
 
         Args:
-            color_code (hexidecimal int): 0xRRGGBB
-            alpha (hexidecimal int): 0x00 <= alpha as hex <= 0xFF
+            color_code (hexadecimal int): 0xRRGGBB
+            alpha (hexadecimal int): 0x00 <= alpha as hex <= 0xFF
         """
 
     def __init__(self, *args, **kwargs):
@@ -1733,7 +1733,7 @@ class OrientedBoundBox:
     It exposes properties such as the center, principal axis directions, the
     extents along these axes, and the full diagonal length of the box.
 
-    Note: The axes of the oriented bounding box are arbitary and may not be
+    Note: The axes of the oriented bounding box are arbitrary and may not be
     consistent across platforms or time.
     """
 
