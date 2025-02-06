@@ -453,10 +453,10 @@ class TestFace(unittest.TestCase):
         face = Cylinder(1, 1).faces().filter_by(GeomType.CYLINDER)[0]
         self.assertAlmostEqual(face.normal_at(0, 1), (1, 0, 0), 5)
 
-    def test_remove_holes(self):
+    def test_without_holes(self):
         # Planar test
         frame = (Rectangle(1, 1) - Rectangle(0.5, 0.5)).face()
-        filled = frame.remove_holes()
+        filled = frame.without_holes()
         self.assertEqual(len(frame.inner_wires()), 1)
         self.assertEqual(len(filled.inner_wires()), 0)
         self.assertAlmostEqual(frame.area, 0.75, 5)
@@ -465,11 +465,11 @@ class TestFace(unittest.TestCase):
         # Errors
         frame.wrapped = None
         with self.assertRaises(ValueError):
-            frame.remove_holes()
+            frame.without_holes()
 
         # No holes
         rect = Face.make_rect(1, 1)
-        self.assertEqual(rect, rect.remove_holes())
+        self.assertEqual(rect, rect.without_holes())
 
         # Non-planar test
         cyl_face = (
@@ -477,16 +477,16 @@ class TestFace(unittest.TestCase):
             .faces()
             .sort_by(Face.area)[-1]
         )
-        filled = cyl_face.remove_holes()
+        filled = cyl_face.without_holes()
         self.assertEqual(len(cyl_face.inner_wires()), 2)
         self.assertEqual(len(filled.inner_wires()), 0)
         self.assertTrue(cyl_face.area < filled.area)
-        self.assertAlmostEqual(cyl_face.total_area, filled.area, 5)
+        self.assertAlmostEqual(cyl_face.area_without_holes, filled.area, 5)
 
-    def test_total_area(self):
+    def test_area_without_holes(self):
         frame = (Rectangle(1, 1) - Rectangle(0.5, 0.5)).face()
         frame.wrapped = None
-        self.assertAlmostEqual(frame.total_area, 0.0, 5)
+        self.assertAlmostEqual(frame.area_without_holes, 0.0, 5)
 
     def test_axes_of_symmetry(self):
         # Empty shape

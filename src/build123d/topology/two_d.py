@@ -505,7 +505,7 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         return result
 
     @property
-    def total_area(self) -> float:
+    def area_without_holes(self) -> float:
         """
         Calculate the total surface area of the face, including the areas of any holes.
 
@@ -519,7 +519,7 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         if self.wrapped is None:
             return 0.0
 
-        return self.remove_holes().area
+        return self.without_holes().area
 
     @property
     def volume(self) -> float:
@@ -1317,8 +1317,24 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
                 projected_shapes.append(shape)
         return projected_shapes
 
-    def remove_holes(self) -> Face:
-        """remove_holes
+    def to_arcs(self, tolerance: float = 1e-3) -> Face:
+        """to_arcs
+
+        Approximate planar face with arcs and straight line segments.
+
+        Args:
+            tolerance (float, optional): Approximation tolerance. Defaults to 1e-3.
+
+        Returns:
+            Face: approximated face
+        """
+        if self.wrapped is None:
+            raise ValueError("Cannot approximate an empty shape")
+
+        return self.__class__.cast(BRepAlgo.ConvertFace_s(self.wrapped, tolerance))
+
+    def without_holes(self) -> Face:
+        """without_holes
 
         Remove all of the holes from this face.
 
@@ -1338,22 +1354,6 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         modified_shape = downcast(reshaper.Apply(self.wrapped))
         holeless.wrapped = modified_shape
         return holeless
-
-    def to_arcs(self, tolerance: float = 1e-3) -> Face:
-        """to_arcs
-
-        Approximate planar face with arcs and straight line segments.
-
-        Args:
-            tolerance (float, optional): Approximation tolerance. Defaults to 1e-3.
-
-        Returns:
-            Face: approximated face
-        """
-        if self.wrapped is None:
-            raise ValueError("Cannot approximate an empty shape")
-
-        return self.__class__.cast(BRepAlgo.ConvertFace_s(self.wrapped, tolerance))
 
     def wire(self) -> Wire:
         """Return the outerwire, generate a warning if inner_wires present"""
