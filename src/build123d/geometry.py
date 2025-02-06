@@ -1134,7 +1134,7 @@ class Color:
 
     @overload
     def __init__(self, color_code: int, alpha: int = 0xFF):
-        """Color from a hexidecimal color code with an optional alpha value
+        """Color from a hexadecimal color code with an optional alpha value
 
         Args:
             color_code (hexidecimal int): 0xRRGGBB
