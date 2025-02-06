@@ -356,6 +356,23 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
     # ---- Properties ----
 
     @property
+    def area_without_holes(self) -> float:
+        """
+        Calculate the total surface area of the face, including the areas of any holes.
+
+        This property returns the overall area of the face as if the inner boundaries (holes)
+        were filled in.
+
+        Returns:
+            float: The total surface area, including the area of holes. Returns 0.0 if
+            the face is empty.
+        """
+        if self.wrapped is None:
+            return 0.0
+
+        return self.without_holes().area
+
+    @property
     def axes_of_symmetry(self) -> list[Axis]:
         """Computes and returns the axes of symmetry for a planar face.
 
@@ -503,23 +520,6 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
             face_vertices = flat_face.vertices().sort_by(Axis.X)
             result = face_vertices[-1].X - face_vertices[0].X
         return result
-
-    @property
-    def area_without_holes(self) -> float:
-        """
-        Calculate the total surface area of the face, including the areas of any holes.
-
-        This property returns the overall area of the face as if the inner boundaries (holes)
-        were filled in.
-
-        Returns:
-            float: The total surface area, including the area of holes. Returns 0.0 if
-            the face is empty.
-        """
-        if self.wrapped is None:
-            return 0.0
-
-        return self.without_holes().area
 
     @property
     def volume(self) -> float:
