@@ -50,7 +50,7 @@ class BuildSketch(Builder):
     Note that all sketch construction is done within sketch_local on Plane.XY.
     When objects are added to the sketch they must be coplanar to Plane.XY,
     usually handled automatically but may need user input for Edges and Wires
-    since their construction plane isn't alway able to be determined.
+    since their construction plane isn't always able to be determined.
 
     Args:
         workplanes (Union[Face, Plane, Location], optional): objects converted to

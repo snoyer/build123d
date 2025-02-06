@@ -997,7 +997,7 @@ class Mixin1D(Shape):
             split_result = unwrap_topods_compound(split_result, True)
 
         # For speed the user may just want all the objects which they
-        # can sort more efficiently then the generic algoritm below
+        # can sort more efficiently then the generic algorithm below
         if keep == Keep.ALL:
             return ShapeList(
                 self.__class__.cast(part)
