@@ -93,12 +93,13 @@ from OCP.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
 from OCP.TopoDS import TopoDS, TopoDS_Face, TopoDS_Shape, TopoDS_Shell, TopoDS_Solid
 from OCP.gce import gce_MakeLin
 from OCP.gp import gp_Pnt, gp_Vec
-from build123d.build_enums import CenterOf, GeomType, SortBy, Transition
+from build123d.build_enums import CenterOf, GeomType, Keep, SortBy, Transition
 from build123d.geometry import (
     TOLERANCE,
     Axis,
     Color,
     Location,
+    OrientedBoundBox,
     Plane,
     Vector,
     VectorLike,
@@ -353,6 +354,104 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         self.created_on: Plane | None = None
 
     # ---- Properties ----
+
+    @property
+    def axes_of_symmetry(self) -> list[Axis]:
+        """Computes and returns the axes of symmetry for a planar face.
+
+        The method determines potential symmetry axes by analyzing the face’s
+        geometry:
+        - It first validates that the face is non-empty and planar.
+        - For faces with inner wires (holes), it computes the centroid of the
+          holes and the face's overall center (COG).
+            If the holes' centroid significantly deviates from the COG (beyond
+            a specified tolerance), the symmetry axis is taken along the line
+            connecting these points; otherwise, each hole’s center is used to
+            generate a candidate axis.
+        - For faces without holes, candidate directions are derived by sampling
+          midpoints along the outer wire's edges.
+            If curved edges are present, additional candidate directions are
+            obtained from an oriented bounding box (OBB) constructed around the
+            face.
+
+        For each candidate direction, the face is split by a plane (defined
+        using the candidate direction and the face’s normal).  The top half of the face
+        is then mirrored across this plane, and if the area of the intersection between
+        the mirrored half and the bottom half matches the bottom half’s area within a
+        small tolerance, the direction is accepted as an axis of symmetry.
+
+        Returns:
+            list[Axis]: A list of Axis objects, each defined by the face's
+                center and a direction vector, representing the symmetry axes of
+                the face.
+
+        Raises:
+            ValueError: If the face or its underlying representation is empty.
+            ValueError: If the face is not planar.
+        """
+
+        if self.wrapped is None:
+            raise ValueError("Can't determine axes_of_symmetry of empty face")
+
+        if not self.is_planar_face:
+            raise ValueError("axes_of_symmetry only supports for planar faces")
+
+        cog = self.center()
+        normal = self.normal_at()
+        shape_inner_wires = self.inner_wires()
+        if shape_inner_wires:
+            hole_faces = [Face(w) for w in shape_inner_wires]
+            holes_centroid = Face.combined_center(hole_faces)
+            # If the holes aren't centered on the cog the axis of symmetry must be
+            # through the cog and hole centroid
+            if abs(holes_centroid - cog) > TOLERANCE:
+                cross_dirs = [(holes_centroid - cog).normalized()]
+            else:
+                # There may be an axis of symmetry through the center of the holes
+                cross_dirs = [(f.center() - cog).normalized() for f in hole_faces]
+        else:
+            curved_edges = (
+                self.outer_wire().edges().filter_by(GeomType.LINE, reverse=True)
+            )
+            shape_edges = self.outer_wire().edges()
+            if curved_edges:
+                obb = OrientedBoundBox(self)
+                corners = obb.corners
+                obb_edges = ShapeList(
+                    [Edge.make_line(corners[i], corners[(i + 1) % 4]) for i in range(4)]
+                )
+                mid_points = [
+                    e @ p for e in shape_edges + obb_edges for p in [0.0, 0.5, 1.0]
+                ]
+            else:
+                mid_points = [e @ p for e in shape_edges for p in [0.0, 0.5, 1.0]]
+            cross_dirs = [(mid_point - cog).normalized() for mid_point in mid_points]
+
+        symmetry_dirs: set[Vector] = set()
+        for cross_dir in cross_dirs:
+            # Split the face by the potential axis and flip the top
+            split_plane = Plane(
+                origin=cog,
+                x_dir=cross_dir,
+                z_dir=cross_dir.cross(normal),
+            )
+            top, bottom = self.split(split_plane, keep=Keep.BOTH)
+            top_flipped = top.mirror(split_plane)
+
+            # Are the top/bottom the same?
+            if abs(bottom.intersect(top_flipped).area - bottom.area) < TOLERANCE:
+                # If this axis isn't in the set already add it
+                if not symmetry_dirs:
+                    symmetry_dirs.add(cross_dir)
+                else:
+                    opposite = any(
+                        d.dot(cross_dir) < -1 + TOLERANCE for d in symmetry_dirs
+                    )
+                    if not opposite:
+                        symmetry_dirs.add(cross_dir)
+
+        symmetry_axes = [Axis(cog, d) for d in symmetry_dirs]
+        return symmetry_axes
 
     @property
     def center_location(self) -> Location:

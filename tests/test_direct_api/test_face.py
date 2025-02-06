@@ -32,7 +32,7 @@ import platform
 import random
 import unittest
 
-from build123d.build_common import Locations
+from build123d.build_common import Locations, PolarLocations
 from build123d.build_enums import Align, CenterOf, GeomType
 from build123d.build_line import BuildLine
 from build123d.build_part import BuildPart
@@ -42,7 +42,13 @@ from build123d.geometry import Axis, Location, Plane, Pos, Vector
 from build123d.importers import import_stl
 from build123d.objects_curve import Polyline
 from build123d.objects_part import Box, Cylinder
-from build123d.objects_sketch import Rectangle, RegularPolygon
+from build123d.objects_sketch import (
+    Circle,
+    Ellipse,
+    Rectangle,
+    RegularPolygon,
+    Triangle,
+)
 from build123d.operations_generic import fillet
 from build123d.operations_part import extrude
 from build123d.operations_sketch import make_face
@@ -481,6 +487,65 @@ class TestFace(unittest.TestCase):
         frame = (Rectangle(1, 1) - Rectangle(0.5, 0.5)).face()
         frame.wrapped = None
         self.assertAlmostEqual(frame.total_area, 0.0, 5)
+
+    def test_axes_of_symmetry(self):
+        # Empty shape
+        shape = Face.make_rect(1, 1)
+        shape.wrapped = None
+        with self.assertRaises(ValueError):
+            shape.axes_of_symmetry
+
+        # Non planar
+        shape = Solid.make_cylinder(1, 2).faces().filter_by(GeomType.CYLINDER)[0]
+        with self.assertRaises(ValueError):
+            shape.axes_of_symmetry
+
+        # Test a variety of shapes
+        shapes = [
+            Rectangle(1, 1),
+            Rectangle(1, 2, align=Align.MIN),
+            Rectangle(1, 2, rotation=10),
+            Rectangle(1, 2, align=Align.MIN) - Pos(0.5, 0.75) * Circle(0.2),
+            (Rectangle(1, 2, align=Align.MIN) - Pos(0.5, 0.75) * Circle(0.2)).rotate(
+                Axis.Z, 10
+            ),
+            Triangle(a=1, b=0.5, C=90),
+            Circle(2) - Pos(0.1) * Rectangle(0.5, 0.5),
+            Circle(2) - Pos(0.1, 0.1) * Rectangle(0.5, 0.5),
+            Circle(2) - (Pos(0.1, 0.1) * PolarLocations(1, 3)) * Circle(0.3),
+            Circle(2) - (Pos(0.5) * PolarLocations(1, 3)) * Circle(0.3),
+            Circle(2) - PolarLocations(1, 3) * Circle(0.3),
+            Ellipse(1, 2, rotation=10),
+        ]
+        shape_dir = [
+            [(-1, 1), (-1, 0), (-1, -1), (0, -1)],
+            [(-1, 0), (0, -1)],
+            [Vector(-1, 0).rotate(Axis.Z, 10), Vector(0, -1).rotate(Axis.Z, 10)],
+            [(0, -1)],
+            [Vector(0, -1).rotate(Axis.Z, 10)],
+            [],
+            [(1, 0)],
+            [(1, 1)],
+            [],
+            [(1, 0)],
+            [
+                (1, 0),
+                Vector(1, 0).rotate(Axis.Z, 120),
+                Vector(1, 0).rotate(Axis.Z, 240),
+            ],
+            [Vector(1, 0).rotate(Axis.Z, 10), Vector(0, 1).rotate(Axis.Z, 10)],
+        ]
+
+        for i, shape in enumerate(shapes):
+            test_face: Face = shape.face()
+            cog = test_face.center()
+            axes = test_face.axes_of_symmetry
+            target_axes = [Axis(cog, d) for d in shape_dir[i]]
+            self.assertEqual(len(target_axes), len(axes))
+            axes_dirs = sorted(tuple(a.direction) for a in axes)
+            target_dirs = sorted(tuple(a.direction) for a in target_axes)
+            self.assertTrue(all(a == t) for a, t in zip(axes_dirs, target_dirs))
+            self.assertTrue(all(a.position == cog) for a in axes)
 
 
 if __name__ == "__main__":

@@ -30,8 +30,10 @@ import math
 import re
 import unittest
 
-from build123d.geometry import Axis, OrientedBoundBox, Pos, Rot, Vector
-from build123d.topology import Face, Solid
+from build123d.geometry import Location, OrientedBoundBox, Plane, Pos, Rot, Vector
+from build123d.topology import Edge, Face, Solid
+from build123d.objects_part import Box
+from build123d.objects_sketch import Polygon
 
 
 class TestOrientedBoundBox(unittest.TestCase):
@@ -174,6 +176,119 @@ class TestOrientedBoundBox(unittest.TestCase):
         self.assertAlmostEqual(size.X, 1.0, places=6)
         self.assertAlmostEqual(size.Y, 1.0, places=6)
         self.assertAlmostEqual(size.Z, 1.0, places=6)
+
+    def test_rotated_cube_corners(self):
+        # Create a cube of size 2x2x2 rotated by 45 degrees around each axis.
+        rotated_cube = Rot(45, 45, 45) * Box(2, 2, 2)
+
+        # Compute the oriented bounding box.
+        obb = OrientedBoundBox(rotated_cube)
+        corners = obb.corners
+
+        # There should be eight unique corners.
+        self.assertEqual(len(corners), 8)
+
+        # The center of the cube should be at or near the origin.
+        center = obb.center()
+
+        # For a cube with full side lengths 2, the half-size is 1,
+        # so the distance from the center to any corner is sqrt(1^2 + 1^2 + 1^2) = sqrt(3).
+        expected_distance = math.sqrt(3)
+
+        # Verify that each corner is at the expected distance from the center.
+        for corner in corners:
+            distance = (corner - center).length
+            self.assertAlmostEqual(distance, expected_distance, places=6)
+
+    def test_planar_face_corners(self):
+        """
+        Test that a planar face returns four unique corner points.
+        """
+        # Create a square face of size 2x2 (centered at the origin).
+        face = Face.make_rect(2, 2)
+        # Compute the oriented bounding box from the face.
+        obb = OrientedBoundBox(face)
+        corners = obb.corners
+
+        # Convert each Vector to a tuple (rounded for tolerance reasons)
+        unique_points = {
+            (round(pt.X, 6), round(pt.Y, 6), round(pt.Z, 6)) for pt in corners
+        }
+        # For a planar (2D) face, we expect 4 unique corners.
+        self.assertEqual(
+            len(unique_points),
+            4,
+            f"Expected 4 unique corners for a planar face but got {len(unique_points)}",
+        )
+        # Check orientation
+        for pln in [Plane.XY, Plane.XZ, Plane.YZ]:
+            rect = Face.make_rect(1, 2, pln)
+            obb = OrientedBoundBox(rect)
+            corners = obb.corners
+            poly = Polygon(*corners, align=None)
+            self.assertAlmostEqual(rect.intersect(poly).area, rect.area, 5)
+
+        for face in Box(1, 2, 3).faces():
+            obb = OrientedBoundBox(face)
+            corners = obb.corners
+            poly = Polygon(*corners, align=None)
+            self.assertAlmostEqual(face.intersect(poly).area, face.area, 5)
+
+    def test_line_corners(self):
+        """
+        Test that a straight line returns two unique endpoints.
+        """
+        # Create a straight line from (0, 0, 0) to (1, 0, 0).
+        line = Edge.make_line(Vector(0, 0, 0), Vector(1, 0, 0))
+        # Compute the oriented bounding box from the line.
+        obb = OrientedBoundBox(line)
+        corners = obb.corners
+
+        # Convert each Vector to a tuple (rounded for tolerance)
+        unique_points = {
+            (round(pt.X, 6), round(pt.Y, 6), round(pt.Z, 6)) for pt in corners
+        }
+        # For a line, we expect only 2 unique endpoints.
+        self.assertEqual(
+            len(unique_points),
+            2,
+            f"Expected 2 unique corners for a line but got {len(unique_points)}",
+        )
+        # Check orientation
+        for end in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
+            line = Edge.make_line((0, 0, 0), end)
+            obb = OrientedBoundBox(line)
+            corners = obb.corners
+            self.assertEqual(len(corners), 2)
+            self.assertTrue(Vector(end) in corners)
+
+    def test_location(self):
+        # Create a unit cube.
+        cube = Solid.make_box(1, 1, 1)
+        obb = OrientedBoundBox(cube)
+
+        # Get the location property (constructed from the plane).
+        loc = obb.location
+
+        # Check that loc is a Location instance.
+        self.assertIsInstance(loc, Location)
+
+        # Compare the location's origin with the oriented bounding box center.
+        center = obb.center()
+        self.assertAlmostEqual(loc.position.X, center.X, places=6)
+        self.assertAlmostEqual(loc.position.Y, center.Y, places=6)
+        self.assertAlmostEqual(loc.position.Z, center.Z, places=6)
+
+        # Optionally, if the Location preserves the plane's orientation,
+        # check that the x and z directions match those of the obb's plane.
+        plane = obb.plane
+        self.assertAlmostEqual(loc.x_axis.direction.X, plane.x_dir.X, places=6)
+        self.assertAlmostEqual(loc.x_axis.direction.Y, plane.x_dir.Y, places=6)
+        self.assertAlmostEqual(loc.x_axis.direction.Z, plane.x_dir.Z, places=6)
+
+        self.assertAlmostEqual(loc.z_axis.direction.X, plane.z_dir.X, places=6)
+        self.assertAlmostEqual(loc.z_axis.direction.Y, plane.z_dir.Y, places=6)
+        self.assertAlmostEqual(loc.z_axis.direction.Z, plane.z_dir.Z, places=6)
 
 
 if __name__ == "__main__":

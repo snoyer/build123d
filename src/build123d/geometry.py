@@ -35,11 +35,12 @@ from __future__ import annotations
 #   too-many-arguments, too-many-locals, too-many-public-methods,
 #   too-many-statements, too-many-instance-attributes, too-many-branches
 import copy as copy_module
+import itertools
 import json
 import logging
 import numpy as np
 
-from math import degrees, pi, radians
+from math import degrees, pi, radians, isclose
 from typing import Any, overload, TypeAlias, TYPE_CHECKING
 
 from collections.abc import Iterable, Sequence
@@ -1754,6 +1755,44 @@ class OrientedBoundBox:
         self.wrapped = obb
 
     @property
+    def corners(self) -> list[Vector]:
+        """
+        Compute and return the unique corner points of the oriented bounding box
+        in the coordinate system defined by the OBB's plane.
+
+        For degenerate shapes (e.g. a line or a planar face), only the unique
+        points are returned. For 2D shapes the corners are returned in an order
+        that allows a polygon to be directly created from them.
+
+        Returns:
+            list[Vector]: The unique corner points.
+        """
+
+        # Build a dictionary keyed by a tuple indicating if each axis is degenerate.
+        orders = {
+            # Straight line cases
+            (True, True, False): [(1, 1, 1), (1, 1, -1)],
+            (True, False, True): [(1, 1, 1), (1, -1, 1)],
+            (False, True, True): [(1, 1, 1), (-1, 1, 1)],
+            # Planar face cases
+            (True, False, False): [(1, 1, 1), (1, 1, -1), (1, -1, -1), (1, -1, 1)],
+            (False, True, False): [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1)],
+            (False, False, True): [(1, 1, 1), (1, -1, 1), (-1, -1, 1), (-1, 1, 1)],
+            # 3D object case
+            (False, False, False): [
+                (x, y, z) for x, y, z in itertools.product((-1, 1), (-1, 1), (-1, 1))
+            ],
+        }
+        hs = self.size * 0.5
+        order = orders[(hs.X < TOLERANCE, hs.Y < TOLERANCE, hs.Z < TOLERANCE)]
+        local_corners = [
+            Vector(sx * hs.X, sy * hs.Y, sz * hs.Z) for sx, sy, sz in order
+        ]
+        corners = [self.plane.from_local_coords(c) for c in local_corners]
+
+        return corners
+
+    @property
     def diagonal(self) -> float:
         """
         The full length of the body diagonal of the oriented bounding box,
@@ -1765,6 +1804,16 @@ class OrientedBoundBox:
         if self.wrapped is None:
             return 0.0
         return self.wrapped.SquareExtent() ** 0.5
+
+    @property
+    def location(self) -> Location:
+        """
+        The Location of the center of the oriented bounding box.
+
+        Returns:
+            Location: center location
+        """
+        return Location(self.plane)
 
     @property
     def plane(self) -> Plane:
