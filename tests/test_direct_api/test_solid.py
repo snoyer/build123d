@@ -30,7 +30,15 @@ import math
 import unittest
 
 from build123d.build_enums import GeomType, Kind, Until
-from build123d.geometry import Axis, Location, Plane, Pos, Vector
+from build123d.geometry import (
+    Axis,
+    BoundBox,
+    Location,
+    OrientedBoundBox,
+    Plane,
+    Pos,
+    Vector,
+)
 from build123d.objects_curve import Spline
 from build123d.objects_sketch import Circle, Rectangle
 from build123d.topology import Compound, Edge, Face, Shell, Solid, Vertex, Wire
@@ -232,6 +240,18 @@ class TestSolid(unittest.TestCase):
             Face.make_rect(1, 1, Plane((10, 0, 0))).wire(), 180, axis=Axis.Y
         )
         self.assertEqual(len(r.faces()), 6)
+
+    def test_from_bounding_box(self):
+        cyl = Solid.make_cylinder(0.001, 10).locate(Location(Plane.isometric))
+        cyl2 = Solid.make_cylinder(1, 10).locate(Location(Plane.isometric))
+
+        rbb = Solid.from_bounding_box(cyl.bounding_box())
+        obb = Solid.from_bounding_box(cyl.oriented_bounding_box())
+        obb2 = Solid.from_bounding_box(cyl2.oriented_bounding_box())
+
+        self.assertAlmostEqual(rbb.volume, (10**3) * (3**0.5) / 9, 0)
+        self.assertTrue(rbb.volume > obb.volume)
+        self.assertAlmostEqual(obb2.volume, 40, 4)
 
 
 if __name__ == "__main__":

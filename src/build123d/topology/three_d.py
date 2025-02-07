@@ -95,6 +95,7 @@ from build123d.geometry import (
     BoundBox,
     Color,
     Location,
+    OrientedBoundBox,
     Plane,
     Vector,
     VectorLike,
@@ -949,9 +950,13 @@ class Solid(Mixin3D, Shape[TopoDS_Solid]):
         return result
 
     @classmethod
-    def from_bounding_box(cls, bbox: BoundBox) -> Solid:
+    def from_bounding_box(cls, bbox: BoundBox | OrientedBoundBox) -> Solid:
         """A box of the same dimensions and location"""
-        return Solid.make_box(*bbox.size).locate(Location(bbox.min))
+        if isinstance(bbox, BoundBox):
+            return Solid.make_box(*bbox.size).locate(Location(bbox.min))
+        else:
+            moved_plane = Plane(Location(-bbox.size / 2)).move(bbox.location)
+            return Solid.make_box(*bbox.size, plane=moved_plane)
 
     @classmethod
     def make_box(
