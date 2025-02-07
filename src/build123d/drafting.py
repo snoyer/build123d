@@ -228,10 +228,10 @@ class Draft:
 
         def simplify_fraction(numerator: int, denominator: int) -> tuple[int, int]:
             """Mathematically simplify a fraction given a numerator and denominator"""
-            greatest_common_demoninator = gcd(numerator, denominator)
+            greatest_common_denominator = gcd(numerator, denominator)
             return (
-                int(numerator / greatest_common_demoninator),
-                int(denominator / greatest_common_demoninator),
+                int(numerator / greatest_common_denominator),
+                int(denominator / greatest_common_denominator),
             )
 
         if display_units is None:
@@ -258,15 +258,15 @@ class Draft:
             return_value = f"{measurement}{unit_str}{tolerance_str}"
         else:
             whole_part = floor(number / IN)
-            (numerator, demoninator) = simplify_fraction(
+            (numerator, denominator) = simplify_fraction(
                 round((number / IN - whole_part) * self.fractional_precision),
                 self.fractional_precision,
             )
             if whole_part == 0:
-                return_value = f"{numerator}/{demoninator}{unit_str}{tolerance_str}"
+                return_value = f"{numerator}/{denominator}{unit_str}{tolerance_str}"
             else:
                 return_value = (
-                    f"{whole_part} {numerator}/{demoninator}{unit_str}{tolerance_str}"
+                    f"{whole_part} {numerator}/{denominator}{unit_str}{tolerance_str}"
                 )
 
         return return_value
