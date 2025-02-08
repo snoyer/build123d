@@ -57,7 +57,7 @@ from __future__ import annotations
 
 import copy
 import warnings
-from typing import Any, Tuple, Union, overload, TYPE_CHECKING
+from typing import Any, overload, TYPE_CHECKING
 
 from collections.abc import Iterable, Sequence
 
@@ -93,6 +93,7 @@ from OCP.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
 from OCP.TopoDS import TopoDS, TopoDS_Face, TopoDS_Shape, TopoDS_Shell, TopoDS_Solid
 from OCP.gce import gce_MakeLin
 from OCP.gp import gp_Pnt, gp_Vec
+
 from build123d.build_enums import CenterOf, GeomType, Keep, SortBy, Transition
 from build123d.geometry import (
     TOLERANCE,
@@ -406,7 +407,6 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
             ValueError: If the face or its underlying representation is empty.
             ValueError: If the face is not planar.
         """
-
         if self.wrapped is None:
             raise ValueError("Can't determine axes_of_symmetry of empty face")
 
@@ -452,12 +452,42 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
                 x_dir=cross_dir,
                 z_dir=cross_dir.cross(normal),
             )
+            # Split by plane
             top, bottom = self.split(split_plane, keep=Keep.BOTH)
-            top_flipped = top.mirror(split_plane)
+
+            if type(top) != type(bottom):  # exit early if not same
+                continue
+
+            if top is None or bottom is None:  # Impossible to actually happen?
+                continue
+
+            top_list = ShapeList(top if isinstance(top, list) else [top])
+            bottom_list = ShapeList(bottom if isinstance(top, list) else [bottom])
+
+            if len(top_list) != len(bottom_list):  # exit early unequal length
+                continue
+
+            bottom_list = bottom_list.sort_by(Axis(cog, cross_dir))
+            top_flipped_list = ShapeList(
+                f.mirror(split_plane) for f in top_list
+            ).sort_by(Axis(cog, cross_dir))
+
+            bottom_area = sum(f.area for f in bottom_list)
+            intersect_area = 0.0
+            for flipped_face, bottom_face in zip(top_flipped_list, bottom_list):
+                intersection = flipped_face.intersect(bottom_face)
+                if intersection is None or isinstance(intersection, list):
+                    intersect_area = -1.0
+                    break
+                else:
+                    assert isinstance(intersection, Face)
+                    intersect_area += intersection.area
+
+            if intersect_area == -1.0:
+                continue
 
             # Are the top/bottom the same?
-            if abs(bottom.intersect(top_flipped).area - bottom.area) < TOLERANCE:
-                # If this axis isn't in the set already add it
+            if abs(intersect_area - bottom_area) < TOLERANCE:
                 if not symmetry_dirs:
                     symmetry_dirs.add(cross_dir)
                 else:
