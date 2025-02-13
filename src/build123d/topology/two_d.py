@@ -552,6 +552,22 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         return result
 
     @property
+    def radius(self) -> None | float:
+        """Return the radius of a cylinder or sphere, otherwise None"""
+        if self.geom_type in [GeomType.CYLINDER, GeomType.SPHERE]:
+            return self.geom_adaptor().Radius()
+        else:
+            return None
+
+    @property
+    def rotational_axis(self) -> None | Axis:
+        """Get the rotational axis of a cylinder"""
+        if self.geom_type == GeomType.CYLINDER:
+            return Axis(self.geom_adaptor().Cylinder().Axis())
+        else:
+            return None
+
+    @property
     def volume(self) -> float:
         """volume - the volume of this Face, which is always zero"""
         return 0.0

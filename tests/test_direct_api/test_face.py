@@ -41,7 +41,7 @@ from build123d.exporters3d import export_stl
 from build123d.geometry import Axis, Location, Plane, Pos, Vector
 from build123d.importers import import_stl
 from build123d.objects_curve import Line, Polyline, Spline, ThreePointArc
-from build123d.objects_part import Box, Cylinder
+from build123d.objects_part import Box, Cylinder, Sphere
 from build123d.objects_sketch import (
     Circle,
     Ellipse,
@@ -732,6 +732,25 @@ class TestFace(unittest.TestCase):
                 )
             make_face()
         self.assertEqual(len(skt.face().axes_of_symmetry), 0)
+
+    def test_radius_property(self):
+        c = Cylinder(1.5, 2).faces().filter_by(GeomType.CYLINDER)[0]
+        s = Sphere(3).faces().filter_by(GeomType.SPHERE)[0]
+        b = Box(1, 1, 1).faces()[0]
+        self.assertAlmostEqual(c.radius, 1.5, 5)
+        self.assertAlmostEqual(s.radius, 3, 5)
+        self.assertIsNone(b.radius)
+
+    def test_rotational_axis_property(self):
+        c = (
+            Cylinder(1.5, 2, rotation=(90, 0, 0))
+            .faces()
+            .filter_by(GeomType.CYLINDER)[0]
+        )
+        s = Sphere(3).faces().filter_by(GeomType.SPHERE)[0]
+        self.assertAlmostEqual(c.rotational_axis.direction, (0, -1, 0), 5)
+        self.assertAlmostEqual(c.rotational_axis.position, (0, 1, 0), 5)
+        self.assertIsNone(s.rotational_axis)
 
 
 class TestAxesOfSymmetrySplitNone(unittest.TestCase):
