@@ -75,7 +75,7 @@ from OCP.BRepIntCurveSurface import BRepIntCurveSurface_Inter
 from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeFilling, BRepOffsetAPI_MakePipeShell
 from OCP.BRepTools import BRepTools, BRepTools_ReShape
 from OCP.GProp import GProp_GProps
-from OCP.Geom import Geom_BezierSurface, Geom_Surface
+from OCP.Geom import Geom_BezierSurface, Geom_Surface, Geom_RectangularTrimmedSurface
 from OCP.GeomAPI import GeomAPI_PointsToBSplineSurface, GeomAPI_ProjectPointOnSurf
 from OCP.GeomAbs import GeomAbs_C0
 from OCP.Precision import Precision
@@ -554,7 +554,10 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
     @property
     def radius(self) -> None | float:
         """Return the radius of a cylinder or sphere, otherwise None"""
-        if self.geom_type in [GeomType.CYLINDER, GeomType.SPHERE]:
+        if (
+            self.geom_type in [GeomType.CYLINDER, GeomType.SPHERE]
+            and type(self.geom_adaptor()) != Geom_RectangularTrimmedSurface
+        ):
             return self.geom_adaptor().Radius()
         else:
             return None
@@ -562,7 +565,10 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
     @property
     def rotational_axis(self) -> None | Axis:
         """Get the rotational axis of a cylinder"""
-        if self.geom_type == GeomType.CYLINDER:
+        if (
+            self.geom_type == GeomType.CYLINDER
+            and type(self.geom_adaptor()) != Geom_RectangularTrimmedSurface
+        ):
             return Axis(self.geom_adaptor().Cylinder().Axis())
         else:
             return None
