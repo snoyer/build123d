@@ -51,6 +51,7 @@ dependencies = [
 "Homepage" = "https://github.com/gumyr/build123d"
 "Documentation" = "https://build123d.readthedocs.io/en/latest/index.html"
 "Bug Tracker" = "https://github.com/gumyr/build123d/issues"
+"Citation" = "https://doi.org/10.5281/zenodo.14872323"
 
 [project.optional-dependencies]
 # enable the optional ocp_vscode visualization package
