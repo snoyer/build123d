@@ -230,6 +230,27 @@ class TestAxis(unittest.TestCase):
         random_obj = object()
         self.assertNotEqual(Axis.X, random_obj)
 
+    def test_position_property(self):
+        axis = Axis.X
+        axis.position = 1, 2, 3
+        self.assertAlmostEqual(axis.position, (1, 2, 3))
+
+        axis.position += 1, 2, 3
+        self.assertAlmostEqual(axis.position, (2, 4, 6))
+
+        self.assertAlmostEqual(Axis(axis.wrapped).position, (2, 4, 6))
+
+    def test_direction_property(self):
+        axis = Axis.X
+        axis.direction = 1, 2, 3
+        self.assertAlmostEqual(axis.direction, Vector(1, 2, 3).normalized())
+
+        axis.direction += 5, 3, 1
+        expected = (Vector(1, 2, 3).normalized() + Vector(5, 3, 1)).normalized()
+        self.assertAlmostEqual(axis.direction, expected)
+
+        self.assertAlmostEqual(Axis(axis.wrapped).direction, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

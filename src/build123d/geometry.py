@@ -661,16 +661,21 @@ class Axis(metaclass=AxisMeta):
                 gp_Dir(*tuple(direction_vector.normalized())),
             )
 
-        self.position = Vector(
-            self.wrapped.Location().X(),
-            self.wrapped.Location().Y(),
-            self.wrapped.Location().Z(),
-        )  #: Axis origin
-        self.direction = Vector(
-            self.wrapped.Direction().X(),
-            self.wrapped.Direction().Y(),
-            self.wrapped.Direction().Z(),
-        )  #: Axis direction
+    @property
+    def position(self):
+        return Vector(self.wrapped.Location())
+
+    @position.setter
+    def position(self, position: VectorLike):
+        self.wrapped.SetLocation(Vector(position).to_pnt())
+
+    @property
+    def direction(self):
+        return Vector(self.wrapped.Direction())
+
+    @direction.setter
+    def direction(self, direction: VectorLike):
+        self.wrapped.SetDirection(Vector(direction).to_dir())
 
     @property
     def location(self) -> Location:
