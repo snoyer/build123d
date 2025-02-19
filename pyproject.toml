@@ -43,7 +43,7 @@ dependencies = [
     "ezdxf >= 1.1.0, < 2",
     "ipython >= 8.0.0, < 9",
     "py-lib3mf >= 2.3.1",
-    "ocpsvg >= 0.4",
+    "ocpsvg >= 0.4, < 0.5",
     "trianglesolver",
 ]
 
