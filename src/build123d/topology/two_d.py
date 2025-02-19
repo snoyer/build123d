@@ -374,6 +374,20 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         return self.without_holes().area
 
     @property
+    def axis_of_rotation(self) -> None | Axis:
+        """Get the rotational axis of a cylinder or torus"""
+        if type(self.geom_adaptor()) == Geom_RectangularTrimmedSurface:
+            return None
+
+        if self.geom_type == GeomType.CYLINDER:
+            return Axis(self.geom_adaptor().Cylinder().Axis())
+
+        if self.geom_type == GeomType.TORUS:
+            return Axis(self.geom_adaptor().Torus().Axis())
+
+        return None
+
+    @property
     def axes_of_symmetry(self) -> list[Axis]:
         """Computes and returns the axes of symmetry for a planar face.
 
@@ -536,6 +550,69 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         return result
 
     @property
+    def _curvature_sign(self) -> float:
+        """
+        Compute the signed dot product between the face normal and the vector from the
+        underlying geometry's reference point to the face center.
+
+        For a cylinder, the reference is the cylinder’s axis position.
+        For a sphere, it is the sphere’s center.
+        For a torus, we derive a reference point on the central circle.
+
+        Returns:
+            float: The signed value; positive indicates convexity, negative indicates concavity.
+                Returns 0 if the geometry type is unsupported.
+        """
+        if self.geom_type == GeomType.CYLINDER:
+            axis = self.axis_of_rotation
+            if axis is None:
+                raise ValueError("Can't find curvature of empty object")
+            return self.normal_at().dot(self.center() - axis.position)
+
+        elif self.geom_type == GeomType.SPHERE:
+            loc = self.location  # The sphere's center
+            if loc is None:
+                raise ValueError("Can't find curvature of empty object")
+            return self.normal_at().dot(self.center() - loc.position)
+
+        elif self.geom_type == GeomType.TORUS:
+            # Here we assume that for a torus the rotational axis can be converted to a plane,
+            # and we then define the central (or core) circle using the first value of self.radii.
+            axis = self.axis_of_rotation
+            if axis is None or self.radii is None:
+                raise ValueError("Can't find curvature of empty object")
+            loc = Location(axis.to_plane())
+            axis_circle = Edge.make_circle(self.radii[0]).locate(loc)
+            _, pnt_on_axis_circle, _ = axis_circle.distance_to_with_closest_points(
+                self.center()
+            )
+            return self.normal_at().dot(self.center() - pnt_on_axis_circle)
+
+        return 0.0
+
+    @property
+    def is_circular_convex(self) -> bool:
+        """
+        Determine whether a given face is convex relative to its underlying geometry
+        for supported geometries: cylinder, sphere, torus.
+
+        Returns:
+            bool: True if convex; otherwise, False.
+        """
+        return self._curvature_sign > TOLERANCE
+
+    @property
+    def is_circular_concave(self) -> bool:
+        """
+        Determine whether a given face is concave relative to its underlying geometry
+        for supported geometries: cylinder, sphere, torus.
+
+        Returns:
+            bool: True if concave; otherwise, False.
+        """
+        return self._curvature_sign < -TOLERANCE
+
+    @property
     def is_planar(self) -> bool:
         """Is the face planar even though its geom_type may not be PLANE"""
         return self.is_planar_face
@@ -552,6 +629,17 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
         return result
 
     @property
+    def radii(self) -> None | tuple[float, float]:
+        """Return the major and minor radii of a torus otherwise None"""
+        if self.geom_type == GeomType.TORUS:
+            return (
+                self.geom_adaptor().MajorRadius(),
+                self.geom_adaptor().MinorRadius(),
+            )
+
+        return None
+
+    @property
     def radius(self) -> None | float:
         """Return the radius of a cylinder or sphere, otherwise None"""
         if (
@@ -559,17 +647,6 @@ class Face(Mixin2D, Shape[TopoDS_Face]):
             and type(self.geom_adaptor()) != Geom_RectangularTrimmedSurface
         ):
             return self.geom_adaptor().Radius()
-        else:
-            return None
-
-    @property
-    def rotational_axis(self) -> None | Axis:
-        """Get the rotational axis of a cylinder"""
-        if (
-            self.geom_type == GeomType.CYLINDER
-            and type(self.geom_adaptor()) != Geom_RectangularTrimmedSurface
-        ):
-            return Axis(self.geom_adaptor().Cylinder().Axis())
         else:
             return None
 

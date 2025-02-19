@@ -32,6 +32,8 @@ import platform
 import random
 import unittest
 
+from unittest.mock import patch, PropertyMock
+from OCP.Geom import Geom_RectangularTrimmedSurface
 from build123d.build_common import Locations, PolarLocations
 from build123d.build_enums import Align, CenterOf, GeomType
 from build123d.build_line import BuildLine
@@ -41,7 +43,7 @@ from build123d.exporters3d import export_stl
 from build123d.geometry import Axis, Location, Plane, Pos, Vector
 from build123d.importers import import_stl
 from build123d.objects_curve import Line, Polyline, Spline, ThreePointArc
-from build123d.objects_part import Box, Cylinder, Sphere
+from build123d.objects_part import Box, Cylinder, Sphere, Torus
 from build123d.objects_sketch import (
     Circle,
     Ellipse,
@@ -49,7 +51,7 @@ from build123d.objects_sketch import (
     RegularPolygon,
     Triangle,
 )
-from build123d.operations_generic import fillet
+from build123d.operations_generic import fillet, offset
 from build123d.operations_part import extrude
 from build123d.operations_sketch import make_face
 from build123d.topology import Edge, Face, Solid, Wire
@@ -741,16 +743,92 @@ class TestFace(unittest.TestCase):
         self.assertAlmostEqual(s.radius, 3, 5)
         self.assertIsNone(b.radius)
 
-    def test_rotational_axis_property(self):
+    def test_axis_of_rotation_property(self):
         c = (
             Cylinder(1.5, 2, rotation=(90, 0, 0))
             .faces()
             .filter_by(GeomType.CYLINDER)[0]
         )
         s = Sphere(3).faces().filter_by(GeomType.SPHERE)[0]
-        self.assertAlmostEqual(c.rotational_axis.direction, (0, -1, 0), 5)
-        self.assertAlmostEqual(c.rotational_axis.position, (0, 1, 0), 5)
-        self.assertIsNone(s.rotational_axis)
+        self.assertAlmostEqual(c.axis_of_rotation.direction, (0, -1, 0), 5)
+        self.assertAlmostEqual(c.axis_of_rotation.position, (0, 1, 0), 5)
+        self.assertIsNone(s.axis_of_rotation)
+
+    @patch.object(
+        Face,
+        "geom_adaptor",
+        return_value=Geom_RectangularTrimmedSurface(
+            Face.make_rect(1, 1).geom_adaptor(), 0.0, 1.0, True
+        ),
+    )
+    def test_axis_of_rotation_property_error(self, mock_is_valid):
+        c = (
+            Cylinder(1.5, 2, rotation=(90, 0, 0))
+            .faces()
+            .filter_by(GeomType.CYLINDER)[0]
+        )
+        self.assertIsNone(c.axis_of_rotation)
+        # Verify is_valid was called
+        mock_is_valid.assert_called_once()
+
+    def test_is_convex_concave(self):
+
+        with BuildPart() as open_box:
+            Box(20, 20, 5)
+            offset(amount=-2, openings=open_box.faces().sort_by(Axis.Z)[-1])
+            fillet(open_box.edges(), 0.5)
+
+        outside_fillets = open_box.faces().filter_by(Face.is_circular_convex)
+        inside_fillets = open_box.faces().filter_by(Face.is_circular_concave)
+        self.assertEqual(len(outside_fillets), 28)
+        self.assertEqual(len(inside_fillets), 12)
+
+    @patch.object(
+        Face, "axis_of_rotation", new_callable=PropertyMock, return_value=None
+    )
+    def test_is_convex_concave_error0(self, mock_is_valid):
+        with BuildPart() as open_box:
+            Box(20, 20, 5)
+            offset(amount=-2, openings=open_box.faces().sort_by(Axis.Z)[-1])
+            fillet(open_box.edges(), 0.5)
+
+        with self.assertRaises(ValueError):
+            open_box.faces().filter_by(Face.is_circular_convex)
+
+        # Verify is_valid was called
+        mock_is_valid.assert_called_once()
+
+    @patch.object(Face, "radii", new_callable=PropertyMock, return_value=None)
+    def test_is_convex_concave_error1(self, mock_is_valid):
+        with BuildPart() as open_box:
+            Box(20, 20, 5)
+            offset(amount=-2, openings=open_box.faces().sort_by(Axis.Z)[-1])
+            fillet(open_box.edges(), 0.5)
+
+        with self.assertRaises(ValueError):
+            open_box.faces().filter_by(Face.is_circular_convex)
+
+        # Verify is_valid was called
+        mock_is_valid.assert_called_once()
+
+    @patch.object(Face, "location", new_callable=PropertyMock, return_value=None)
+    def test_is_convex_concave_error2(self, mock_is_valid):
+        with BuildPart() as open_box:
+            Box(20, 20, 5)
+            offset(amount=-2, openings=open_box.faces().sort_by(Axis.Z)[-1])
+            fillet(open_box.edges(), 0.5)
+
+        with self.assertRaises(ValueError):
+            open_box.faces().filter_by(Face.is_circular_convex)
+
+        # Verify is_valid was called
+        mock_is_valid.assert_called_once()
+
+    def test_radii(self):
+        t = Torus(5, 1).face()
+        self.assertAlmostEqual(t.radii, (5, 1), 5)
+        s = Sphere(1).face()
+        self.assertIsNone(s.radii)
 
 
 class TestAxesOfSymmetrySplitNone(unittest.TestCase):
