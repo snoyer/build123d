@@ -88,7 +88,7 @@ from OCP.BRepOffset import BRepOffset_MakeOffset
 from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffset
 from OCP.BRepPrimAPI import BRepPrimAPI_MakeHalfSpace
 from OCP.BRepProj import BRepProj_Projection
-from OCP.BRepTools import BRepTools
+from OCP.BRepTools import BRepTools, BRepTools_WireExplorer
 from OCP.GC import GC_MakeArcOfCircle, GC_MakeArcOfEllipse
 from OCP.GCPnts import GCPnts_AbscissaPoint
 from OCP.GProp import GProp_GProps
@@ -480,10 +480,20 @@ class Mixin1D(Shape):
 
     def edges(self) -> ShapeList[Edge]:
         """edges - all the edges in this Shape"""
-        edge_list = Shape.get_shape_list(self, "Edge")
-        return edge_list.filter_by(
-            lambda e: BRep_Tool.Degenerated_s(e.wrapped), reverse=True
-        )
+        if isinstance(self, Wire):
+            # The WireExplorer is a tool to explore the edges of a wire in a connection order.
+            explorer = BRepTools_WireExplorer(self.wrapped)
+
+            edge_list: ShapeList[Edge] = ShapeList()
+            while explorer.More():
+                edge_list.append(Edge(explorer.Current()))
+                explorer.Next()
+            return edge_list
+        else:
+            edge_list = Shape.get_shape_list(self, "Edge")
+            return edge_list.filter_by(
+                lambda e: BRep_Tool.Degenerated_s(e.wrapped), reverse=True
+            )
 
     def end_point(self) -> Vector:
         """The end point of this edge.
