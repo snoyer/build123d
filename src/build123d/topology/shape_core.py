@@ -1869,17 +1869,17 @@ class Shape(NodeMixin, Generic[TOPODS]):
     @overload
     def split(
         self, tool: TrimmingTool, keep: Literal[Keep.TOP, Keep.BOTTOM]
-    ) -> Self | list[Self] | None:
+    ) -> Self | Compound:
         """split and keep inside or outside"""
 
     @overload
-    def split(self, tool: TrimmingTool, keep: Literal[Keep.ALL]) -> list[Self]:
+    def split(self, tool: TrimmingTool, keep: Literal[Keep.ALL]) -> Compound:
         """split and return the unordered pieces"""
 
     @overload
     def split(self, tool: TrimmingTool, keep: Literal[Keep.BOTH]) -> tuple[
-        Self | list[Self] | None,
-        Self | list[Self] | None,
+        Self | Compound,
+        Self | Compound,
     ]:
         """split and keep inside and outside"""
 
@@ -1890,7 +1890,7 @@ class Shape(NodeMixin, Generic[TOPODS]):
         """invalid split"""
 
     @overload
-    def split(self, tool: TrimmingTool) -> Self | list[Self] | None:
+    def split(self, tool: TrimmingTool) -> Self | Compound:
         """split and keep inside (default)"""
 
     def split(self, tool: TrimmingTool, keep: Keep = Keep.TOP):
@@ -1905,15 +1905,13 @@ class Shape(NodeMixin, Generic[TOPODS]):
         Returns:
             Shape: result of split
         Returns:
-            Self | list[Self] | None,
-            Tuple[Self | list[Self] | None]: The result of the split operation.
+            Self | Compound,
+            Tuple[Self | Compound, Self | Compound]: The result of the split operation.
 
-            - **Keep.TOP**: Returns the top as a `Self` or `list[Self]`, or `None`
-              if no top is found.
-            - **Keep.BOTTOM**: Returns the bottom as a `Self` or `list[Self]`, or `None`
-              if no bottom is found.
+            - **Keep.TOP**: Returns the top as a `Self` or `Compound`.
+            - **Keep.BOTTOM**: Returns the bottom as a `Self` or `Compound`.
             - **Keep.BOTH**: Returns a tuple `(inside, outside)` where each element is
-              either a `Self` or `list[Self]`, or `None` if no corresponding part is found.
+              either a `Self` or `Compound`.
         """
         if self._wrapped is None or not tool:
             raise ValueError("Can't split an empty edge/wire/tool")
@@ -2002,8 +2000,8 @@ class Shape(NodeMixin, Generic[TOPODS]):
                 is_up = properties.Mass() >= TOLERANCE
             (tops if is_up else bottoms).append(sub_shape)
 
-        top = None if not tops else tops[0] if len(tops) == 1 else tops
-        bottom = None if not bottoms else bottoms[0] if len(bottoms) == 1 else bottoms
+        top = tops[0] if len(tops) == 1 else self.make_composite(tops)
+        bottom = bottoms[0] if len(bottoms) == 1 else self.make_composite(bottoms)
 
         if keep == Keep.BOTH:
             return (top, bottom)

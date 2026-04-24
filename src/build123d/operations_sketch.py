@@ -152,7 +152,7 @@ def full_round(
     trimmed_connected_edges = [e.split(split_pln) for e in connected_edges]
     typed_trimmed_connected_edges = []
     for trimmed_edge in trimmed_connected_edges:
-        if trimmed_edge is None:
+        if not trimmed_edge:
             raise ValueError("Invalid geometry to create the end arc")
         assert isinstance(trimmed_edge, Edge)
         typed_trimmed_connected_edges.append(trimmed_edge)  # Make mypy happy

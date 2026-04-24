@@ -59,7 +59,7 @@ import warnings
 from collections.abc import Iterable, Iterator, Sequence
 from itertools import combinations
 from os import PathLike, fspath
-from typing import overload
+from typing import Any, overload
 from typing_extensions import Self
 
 import OCP.TopAbs as ta
@@ -541,6 +541,14 @@ class Compound(Mixin3D[TopoDS_Compound]):
             for _ in self:
                 count += 1
         return count
+
+    def __getitem__(self, index: int) -> Shape[Any]:
+        n = len(self)
+        if -n <= index < n:
+            for i, child in enumerate(self):
+                if i == index:
+                    return child
+        raise IndexError(f"{self.__class__.__name__} index out of range")
 
     def __repr__(self):
         """Return Compound info as string"""

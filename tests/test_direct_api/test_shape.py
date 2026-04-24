@@ -127,7 +127,7 @@ class TestShape(unittest.TestCase):
     def test_split(self):
         shape = Box(1, 1, 1) - Pos((0, 0, -0.25)) * Box(1, 0.5, 0.5)
         split_shape = shape.split(Plane.XY, keep=Keep.BOTTOM)
-        self.assertTrue(isinstance(split_shape, list))
+        self.assertTrue(isinstance(split_shape, Compound))
         self.assertEqual(len(split_shape), 2)
         self.assertAlmostEqual(split_shape[0].volume + split_shape[1].volume, 0.25, 5)
         split_shape = shape.split(Plane.XY, keep=Keep.TOP)
